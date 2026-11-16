@@ -1,0 +1,20 @@
+name: Gitee mirror
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mirror:
+    if: ${{ vars.GITEE_MIRROR_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure mirror credentials
+        env:
+          MIRROR_URL: ${{ vars.GITEE_MIRROR_URL }}
+          MIRROR_TOKEN: ${{ secrets.GITEE_MIRROR_TOKEN }}
+        run: |
+          git remote add gitee "$MIRROR_URL"
+          git -c http.extraheader="Authorization: token $MIRROR_TOKEN" push --mirror gitee

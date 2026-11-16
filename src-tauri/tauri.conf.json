@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "第二曲线AI",
+  "version": "4.0.0",
+  "identifier": "com.secondcurve.app",
+  "build": {
+    "beforeDevCommand": {
+      "script": "npm run dev",
+      "cwd": "..",
+      "wait": false
+    },
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "第二曲线AI · SECOND CURVE",
+        "width": 1180,
+        "height": 820,
+        "minWidth": 360,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://tauri.localhost; style-src 'self' 'unsafe-inline' http://tauri.localhost; img-src 'self' data: blob: http://tauri.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": ["icons/icon.ico", "icons/32x32.png", "icons/icon.png"]
+  }
+}

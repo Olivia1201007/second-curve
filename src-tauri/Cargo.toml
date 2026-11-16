@@ -1,0 +1,15 @@
+[package]
+name = "second-curve"
+version = "4.0.0"
+description = "第二曲线AI - 职业再就业助手"
+authors = ["SECOND CURVE contributors"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

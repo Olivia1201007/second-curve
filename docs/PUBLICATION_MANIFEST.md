@@ -1,0 +1,167 @@
+# SECOND CURVE 公开发布待审清单
+
+> 状态：项目所有者已确认首个公开发布；此清单记录经审查的源码文件范围，不代表 Actions 构建或 Release 已成功。
+
+## 仓库计划
+
+- 仓库名：`second-curve`
+- 可见性：**公开（Public）**
+- 说明：SECOND CURVE — An AI-powered career transition and reemployment assistant for middle-aged job seekers.
+- 既有仓库 `https://github.com/Olivia1201007/second-curve` 已设为 Public，默认分支为 `main`；仅在审核通过后推送项目文件。
+- `.openai/hosting.json` 已从 GitHub 候选清单中排除，仅用于现有站点托管。
+- `.env.example` 只包含变量名与占位说明；任何真实密钥不得提交。
+
+## 候选公开文件（145 项，含本清单）
+
+- `.env.example`
+- `.github/workflows/android.yml`
+- `.github/workflows/ci.yml`
+- `.github/workflows/gitee-mirror.yml`
+- `.github/workflows/release.yml`
+- `.gitignore`
+- `.prettierignore`
+- `.prettierrc.json`
+- `CHANGELOG.md`
+- `CODE_OF_CONDUCT.md`
+- `CONTRIBUTING.md`
+- `LICENSE`
+- `README.md`
+- `SECURITY.md`
+- `android/.gitignore`
+- `android/app/.gitignore`
+- `android/app/build.gradle`
+- `android/app/capacitor.build.gradle`
+- `android/app/proguard-rules.pro`
+- `android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java`
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/java/com/secondcurve/app/MainActivity.java`
+- `android/app/src/main/res/drawable-land-hdpi/splash.png`
+- `android/app/src/main/res/drawable-land-ldpi/splash.png`
+- `android/app/src/main/res/drawable-land-mdpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-hdpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-ldpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-mdpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-xhdpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-xxhdpi/splash.png`
+- `android/app/src/main/res/drawable-land-night-xxxhdpi/splash.png`
+- `android/app/src/main/res/drawable-land-xhdpi/splash.png`
+- `android/app/src/main/res/drawable-land-xxhdpi/splash.png`
+- `android/app/src/main/res/drawable-land-xxxhdpi/splash.png`
+- `android/app/src/main/res/drawable-night/splash.png`
+- `android/app/src/main/res/drawable-port-hdpi/splash.png`
+- `android/app/src/main/res/drawable-port-ldpi/splash.png`
+- `android/app/src/main/res/drawable-port-mdpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-hdpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-ldpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-mdpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-xhdpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-xxhdpi/splash.png`
+- `android/app/src/main/res/drawable-port-night-xxxhdpi/splash.png`
+- `android/app/src/main/res/drawable-port-xhdpi/splash.png`
+- `android/app/src/main/res/drawable-port-xxhdpi/splash.png`
+- `android/app/src/main/res/drawable-port-xxxhdpi/splash.png`
+- `android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml`
+- `android/app/src/main/res/drawable/ic_launcher_background.xml`
+- `android/app/src/main/res/drawable/splash.png`
+- `android/app/src/main/res/layout/activity_main.xml`
+- `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`
+- `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml`
+- `android/app/src/main/res/mipmap-hdpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png`
+- `android/app/src/main/res/mipmap-ldpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-ldpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-ldpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-ldpi/ic_launcher_round.png`
+- `android/app/src/main/res/mipmap-mdpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png`
+- `android/app/src/main/res/mipmap-xhdpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png`
+- `android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png`
+- `android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png`
+- `android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png`
+- `android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png`
+- `android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png`
+- `android/app/src/main/res/values/ic_launcher_background.xml`
+- `android/app/src/main/res/values/strings.xml`
+- `android/app/src/main/res/values/styles.xml`
+- `android/app/src/main/res/xml/file_paths.xml`
+- `android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java`
+- `android/build.gradle`
+- `android/capacitor.settings.gradle`
+- `android/gradle.properties`
+- `android/gradle/wrapper/gradle-wrapper.jar`
+- `android/gradle/wrapper/gradle-wrapper.properties`
+- `android/gradlew`
+- `android/gradlew.bat`
+- `android/settings.gradle`
+- `android/variables.gradle`
+- `app/globals.css`
+- `app/icon.svg`
+- `app/layout.tsx`
+- `app/page.tsx`
+- `assets/icon.png`
+- `assets/splash.png`
+- `capacitor.config.ts`
+- `docs/API.md`
+- `docs/BUILD_STATUS.md`
+- `docs/DATABASE.md`
+- `docs/DEMO_GUIDE.md`
+- `docs/DEMO_SCRIPT.md`
+- `docs/DIRECTORY.md`
+- `docs/GITHUB_SETUP.md`
+- `docs/INTEGRATIONS.md`
+- `docs/PRIVACY.md`
+- `docs/PRODUCT_PLAN.md`
+- `docs/PROJECT_PLAN.md`
+- `docs/PUBLICATION_MANIFEST.md`
+- `docs/TECH_REVIEW.md`
+- `docs/WINDOWS.md`
+- `docs/app-installation.md`
+- `docs/architecture.md`
+- `docs/assets/second-curve-icon-1024.png`
+- `docs/deployment.md`
+- `docs/development.md`
+- `docs/engineering-standards.md`
+- `eslint.config.mjs`
+- `lib/career-service.ts`
+- `lib/engine.ts`
+- `mammoth-browser.d.ts`
+- `next-env.d.ts`
+- `next.config.mjs`
+- `package-lock.json`
+- `package.json`
+- `public/ocr-data/chi_sim.traineddata.gz`
+- `public/ocr-data/eng.traineddata.gz`
+- `public/pdf.worker.min.mjs`
+- `public/tesseract-core/tesseract-core.wasm`
+- `public/tesseract-core/tesseract-core.wasm.js`
+- `public/tesseract/worker.min.js`
+- `scripts/package-report.mjs`
+- `scripts/sync-gitee-mirror.sh`
+- `src-tauri/Cargo.toml`
+- `src-tauri/build.rs`
+- `src-tauri/icons/32x32.png`
+- `src-tauri/icons/icon.ico`
+- `src-tauri/icons/icon.png`
+- `src-tauri/src/lib.rs`
+- `src-tauri/src/main.rs`
+- `src-tauri/tauri.conf.json`
+- `tests/engine.test.ts`
+- `tsconfig.json`
+- `vitest.config.mts`
+
+## 安全检查范围
+
+- 检查了 Git 跟踪清单中的环境文件、常见凭据文件名、签名文件和私钥扩展名。
+- 针对应用源代码和配置中的常见密钥格式进行扫描；未发现个人简历、数据库备份或凭据文件。
+- OCR、PDF 与 WebAssembly 文件属于应用运行所需的公开第三方资源，不包含用户档案。
+- 推送前请审阅本清单及完整文件清单；公开仓库创建权限恢复后，仍需所有者确认公开发布。
