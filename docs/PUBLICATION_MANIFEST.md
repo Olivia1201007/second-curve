@@ -1,14 +1,14 @@
 # SECOND CURVE 公开发布待审清单
 
-> 状态：项目所有者已确认首个公开发布；此清单记录经审查的源码文件范围，不代表 Actions 构建或 Release 已成功。
+> 状态：项目文件已审查并推送到 Public 仓库；CI 和 Android Debug 构建通过，v1.0.0 Release 工作流待执行。
 
 ## 仓库计划
 
 - 仓库名：`second-curve`
 - 可见性：**公开（Public）**
 - 说明：SECOND CURVE — An AI-powered career transition and reemployment assistant for middle-aged job seekers.
-- 既有仓库 `https://github.com/Olivia1201007/second-curve` 已设为 Public，默认分支为 `main`；仅在审核通过后推送项目文件。
-- `.openai/hosting.json` 已从 GitHub 候选清单中排除，仅用于现有站点托管。
+- 既有仓库 `https://github.com/Olivia1201007/second-curve` 已设为 Public，默认分支为 `main`；项目提交为 `a673ff5`，后续 Android 工作流修复为 `9c50fa3`。
+- 此目录不包含 `.openai/hosting.json`，该配置未被添加或推送。
 - `.env.example` 只包含变量名与占位说明；任何真实密钥不得提交。
 
 ## 候选公开文件（145 项，含本清单）

@@ -4,7 +4,7 @@
 
 > 过去的经验，值得被重新看见。
 
-[Web 在线体验](https://second-curve-career.wiryfox513.chatgpt.site/) · [GitHub Public 仓库](https://github.com/Olivia1201007/second-curve) · Android、Windows 安装包待 GitHub Actions 实际构建
+[Web 在线体验](https://second-curve-career.wiryfox513.chatgpt.site/) · [GitHub Public 仓库](https://github.com/Olivia1201007/second-curve) · v1.0.0 Release 安装包待 GitHub Actions 构建完成
 
 SECOND CURVE 帮助用户从真实工作任务中发现可迁移能力，整理求职材料并开始下一步行动。页面不以年龄推断能力，不承诺就业结果，也不编造招聘、工资或用户业绩。
 
@@ -95,7 +95,7 @@ cd android
 ./gradlew assembleDebug
 ```
 
-APK：`android/app/build/outputs/apk/debug/app-debug.apk`。安装、签名和离线说明见 [Android 指南](docs/app-installation.md)。当前云端/本机尚未生成可下载二进制时，不要把目录路径当成下载链接；请从 GitHub Release 下载工作流实际生成的文件。
+APK：`android/app/build/outputs/apk/debug/app-debug.apk`。安装、签名和离线说明见 [Android 指南](docs/app-installation.md)。Android Debug APK 已由 GitHub Actions 构建；公开下载文件以 v1.0.0 Release 实际生成的资产为准。
 
 ## Windows
 
@@ -107,7 +107,7 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-安装包输出到 `src-tauri/target/release/bundle/`。Windows 打包工作流已配置为使用 GitHub Actions `windows-latest`；当前没有已运行的工作流或可下载体验包。
+安装包输出到 `src-tauri/target/release/bundle/`。Windows 打包工作流已配置为使用 GitHub Actions `windows-latest`；v1.0.0 Release 成功前没有可下载安装包。
 
 ## 环境变量与 API
 
