@@ -11,8 +11,8 @@
 | Prettier                        | 通过           | `npm run format:check`                                                                                            |
 | 生产依赖审计                    | 通过           | `npm audit --omit=dev --audit-level=high`：0 个高危及以上；开发工具全量审计仍报告仅开发依赖的 moderate advisories |
 | Capacitor Android 工程/资源同步 | 通过           | Actions run `43892149864` 的 `npx cap sync android` 成功                                                          |
-| Android Debug APK               | 已构建         | Actions run `43892149864` 成功；未签名 Debug APK，v1.0.0 Release 再生成 APK 与 SHA256                             |
-| Windows MSI/EXE                 | Release 待构建 | 本机没有 Windows/Rust 工具链；由 v1.0.0 标签触发 Windows GitHub-hosted Actions，成功后提供安装包与 SHA256         |
+| Android Debug APK               | Release 已发布 | Actions run `43896828972` 成功；APK 使用标准 Debug 签名，不是商店发布签名                                        |
+| Windows MSI/EXE                 | Release 已发布 | Actions run `43896828972` 成功；安装包与 `windows-sha256.txt` 已上传，未配置代码签名                             |
 | Sites Web URL                   | 已有           | https://second-curve-career.wiryfox513.chatgpt.site/；APP 4.0 尚未发布到该 URL                                    |
-| GitHub 公开仓库                 | 已发布         | https://github.com/Olivia1201007/second-curve；`main` 指向 `9c50fa3`，CI run `43892149778` 成功                   |
+| GitHub 公开仓库                 | 已发布         | https://github.com/Olivia1201007/second-curve；`main` 指向 `069ce52`，CI run `43896426208` 成功                   |
 | Gitee 镜像                      | 未创建         | 未授权；已有手动镜像脚本与可选工作流                                                                              |

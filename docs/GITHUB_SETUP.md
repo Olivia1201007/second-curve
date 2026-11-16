@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 仓库：[Olivia1201007/second-curve](https://github.com/Olivia1201007/second-curve)，Public，默认分支 `main`。
-- 已提交并推送首次公开源码；`main` 的质量检查 run `43892149778` 和 Android Debug APK run `43892149864` 均成功。
-- v1.0.0 Android/Windows Release 仍待标签工作流完成；只在 GitHub-hosted Actions 成功后提供下载链接，不将本地产物路径冒充为 Release。
-- Android Release 工作流生成未签名 Debug APK 与 SHA256 文件；Android 商店签名版本需要将签名材料配置为 GitHub Secrets。
+- 已提交并推送首次公开源码；质量检查 run `43896426208` 和 v1.0.0 Release run `43896828972` 均成功。
+- [v1.0.0 Release](https://github.com/Olivia1201007/second-curve/releases/tag/v1.0.0) 已附上 Android Debug APK、Windows EXE/MSI 与 SHA256 校验文件。
+- Android APK 使用标准 Debug 签名，未使用商店发布密钥；Windows 安装包未做代码签名。需要正式签名时，仅使用 GitHub Secrets。
 
 ## 工作流
 
