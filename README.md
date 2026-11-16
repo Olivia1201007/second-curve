@@ -20,7 +20,7 @@ SECOND CURVE 帮助用户从真实工作任务中发现可迁移能力，整理�
 - 三类职业方向及可修改目标；粘贴真实招聘描述进行关键词对照。
 - 简历、自我介绍与求职邮件草稿；面试回答结构练习；行动计划、岗位跟进和 PDF 打印。
 - Android 原生壳：本地静态资源打包、应用图标/启动页、系统返回、网络状态提示、系统分享。
-- Windows Tauri 桌面包：本地静态资源、独立窗口、系统应用图标。
+- Windows 与 macOS Tauri 桌面包：本地静态资源、独立窗口、系统应用图标。
 
 ## 真实边界
 
@@ -40,7 +40,7 @@ SECOND CURVE 帮助用户从真实工作任务中发现可迁移能力，整理�
 
 - Web：Next.js 16、React 19、TypeScript、静态导出。
 - Android：Capacitor 7，`out/` 被复制到 Android app assets。
-- Windows：Tauri 2，窗口加载安装包内的 `out/` 文件。
+- Windows/macOS：Tauri 2，窗口加载安装包内的 `out/` 文件；macOS Release 生成 Intel 与 Apple Silicon 通用 DMG。
 - 本地服务：`lib/engine.ts`、`lib/career-service.ts`。
 - 数据：浏览器/WebView `localStorage`；没有服务器个人档案存储。
 - OCR/文件：本地 Tesseract.js 语言资源、PDF.js、Mammoth。
@@ -82,7 +82,7 @@ npm test
 npm run build
 ```
 
-GitHub Actions 在 `main` 和 PR 运行上述检查；Android APK、Windows 安装包由标签 `v*` 触发构建并附带 SHA-256 文件。APK 当前是 Debug 评委体验版，不是 Android 商店签名发布包。
+GitHub Actions 在 `main` 和 PR 运行上述检查；Android APK、Windows 安装包和 macOS 通用 DMG 由标签 `v*` 触发构建并附带 SHA-256 文件。APK 当前是 Debug 评委体验版，不是 Android 商店签名发布包。
 
 ## Android
 
@@ -109,6 +109,18 @@ npm run tauri:build
 
 安装包输出到 `src-tauri/target/release/bundle/`。[v1.0.0 Release](https://github.com/Olivia1201007/second-curve/releases/tag/v1.0.0) 提供 Actions 构建的 EXE、MSI 和 SHA256 文件。Windows 安装包未配置代码签名，系统可能显示 SmartScreen 提示。
 
+## macOS
+
+本地构建需要 macOS、Xcode Command Line Tools、Rust stable 与 Node.js 22 或更高版本：
+
+```bash
+npm ci
+npm run tauri:dev
+npm run tauri:build -- --target universal-apple-darwin --bundles dmg
+```
+
+GitHub Release 会生成同时支持 Apple Silicon 与 Intel 的 DMG。构建目前未配置 Apple Developer ID 签名和公证；macOS 可能显示开发者无法验证提示。个人测试时请先确认下载来源并核对 `macos-sha256.txt`。向普通用户分发前应配置 Developer ID 签名和 Apple 公证。
+
 ## 环境变量与 API
 
 `.env.example` 提供未来服务端适配器占位配置；**当前应用不读取这些变量，也无需配置 API key**。绝不可将模型密钥加入 `NEXT_PUBLIC_*`、网页静态资源、Android APK 或 Windows 安装包。真实模型需通过受控服务端 API 代理接入。
@@ -131,4 +143,4 @@ MIT License。欢迎查看 [贡献指南](CONTRIBUTING.md)、[行为准则](CODE
 
 # English
 
-SECOND CURVE helps mid-career job seekers turn real work experience into transferable skills and practical job-search actions. It is available as a static web app and is being packaged for Android (Capacitor) and Windows (Tauri). Current analysis is local and rule-based; no live AI, job feed, salary dataset, or cloud profile storage is connected. No employment outcome is guaranteed.
+SECOND CURVE helps mid-career job seekers turn real work experience into transferable skills and practical job-search actions. It is available as a static web app and is packaged for Android (Capacitor), Windows, and macOS (Tauri). Current analysis is local and rule-based; no live AI, job feed, salary dataset, or cloud profile storage is connected. No employment outcome is guaranteed.

@@ -1,4 +1,4 @@
-name: Release Android and Windows
+name: Release Android, Windows and macOS
 on:
   push:
     tags: ['v*']
@@ -54,8 +54,32 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
             windows-sha256.txt
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Rust targets for a universal macOS app
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - run: npm ci
+      - run: npm run tauri:build -- --target universal-apple-darwin --bundles dmg
+      - name: Create macOS SHA256 checksum
+        run: |
+          cd src-tauri/target/universal-apple-darwin/release/bundle/dmg
+          shasum -a 256 *.dmg > "$GITHUB_WORKSPACE/macos-sha256.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            macos-sha256.txt
   publish:
-    needs: [android, windows]
+    needs: [android, windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
