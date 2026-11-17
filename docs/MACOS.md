@@ -21,3 +21,16 @@ npm run tauri:build -- --target universal-apple-darwin --bundles dmg
 ```
 
 DMG 输出在 `src-tauri/target/universal-apple-darwin/release/bundle/dmg/`。GitHub Actions 在推送 `v*` 标签时自动构建 Android、Windows 和 macOS 包，并生成 SHA-256 校验文件。
+
+## 启动后立即退出
+
+收集崩溃报告中的 `Exception Type`、`Termination Reason`、`Crashed Thread` 和该线程完整的 `Thread Backtrace`。`EXC_CRASH (SIGABRT)` 或 AppKit/AppleEvent 栈本身不一定能说明根因；检查崩溃报告中的异常消息，也可从终端启动 `.app/Contents/MacOS/second-curve` 并查看标准错误输出。
+
+Tauri 启动时会读取配置的 PNG 图标。图标需为 8-bit RGBA，并与声明的宽高相符；16-bit RGBA PNG 可能导致初始化时报 `invalid icon`，进而在主线程事件循环中触发 abort。本项目的 `icons/32x32.png` 和 `icons/icon.png` 已规范为 8-bit RGBA。可用以下命令检查图标格式并构建 universal 包：
+
+```bash
+file src-tauri/icons/32x32.png src-tauri/icons/icon.png
+npm run tauri:build -- --target universal-apple-darwin --bundles dmg
+```
+
+挂载 DMG 后，可用 `lipo -archs "<应用路径>/Contents/MacOS/second-curve"` 确认可执行文件同时包含 `arm64` 和 `x86_64`。如果崩溃报告没有异常消息，保留完整报告和启动日志再进一步排查，不要仅根据崩溃栈推断原因。
