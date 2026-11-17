@@ -68,15 +68,18 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - run: npm ci
       - run: npm run tauri:build -- --target universal-apple-darwin --bundles dmg
-      - name: Create macOS SHA256 checksum
+      - name: Prepare macOS release assets
         run: |
-          cd src-tauri/target/universal-apple-darwin/release/bundle/dmg
-          shasum -a 256 *.dmg > "$GITHUB_WORKSPACE/macos-sha256.txt"
+          dmg_path=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
+          test -n "$dmg_path"
+          cp "$dmg_path" "$GITHUB_WORKSPACE/second-curve-macos-universal.dmg"
+          cd "$GITHUB_WORKSPACE"
+          shasum -a 256 second-curve-macos-universal.dmg > macos-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: macos
           path: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            second-curve-macos-universal.dmg
             macos-sha256.txt
   publish:
     needs: [android, windows, macos]
