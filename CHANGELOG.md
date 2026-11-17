@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.1 — Android navigation and safe-area fix (2026-11-17)
+
+- Added a visible back button in personal settings and preserved the previous page.
+- Added mobile header spacing, Android edge-to-edge insets, and readable system bar icons.
+- Android versionCode 6; retained the 4.1.0 preview signing identity.
+- Android update only; Windows installers remain at 4.1.0. See [release notes](docs/CHANGELOG-4.1.1.md).
+
 ## 4.0.0 — Cross-platform packaging foundation
 
 - Prepared a locally bundled Capacitor Android application.

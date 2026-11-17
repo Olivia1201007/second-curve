@@ -200,6 +200,7 @@ export default function Home() {
     [generatedSource, setGeneratedSource] = useState<ResultSource>('local'),
     [matchSource, setMatchSource] = useState<ResultSource>('local');
   const serviceBusyRef = useRef(true);
+  const settingsReturnRef = useRef('home');
   const actionsBusy = Boolean(serviceBusy || modelBusy);
   const goal = selected || profile.desiredWork || '';
   const notify = (s: string) => {
@@ -314,6 +315,7 @@ export default function Home() {
     generatedSource,
   ]);
   const go = (id: string) => {
+    if (id === 'settings' && page !== 'settings') settingsReturnRef.current = page;
     setPage(id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -356,8 +358,10 @@ export default function Home() {
     if (!Capacitor.isNativePlatform()) return;
     let handle: { remove: () => Promise<void> } | undefined;
     NativeApp.addListener('backButton', () => {
-      if (page !== 'home') go('home');
-      else void NativeApp.exitApp();
+      if (page !== 'home') {
+        setPage(page === 'settings' ? settingsReturnRef.current : 'home');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else void NativeApp.exitApp();
     })
       .then((h) => (handle = h))
       .catch(() => {});
@@ -813,7 +817,7 @@ export default function Home() {
   const scaleClass = fontScale > 0 ? 'font-large' : fontScale < 0 ? 'font-small' : '';
   return (
     <div className={`app-shell ${scaleClass} ${page === 'home' ? 'home-view' : ''}`}>
-      <header className="site-header">
+      <header className={`site-header ${page === 'settings' ? 'settings-header' : ''}`}>
         <button className="brand" onClick={() => go('home')} aria-label="SECOND CURVE 首页">
           <span className="brand-mark">
             <svg viewBox="0 0 42 34" fill="none" aria-hidden="true">
@@ -864,9 +868,20 @@ export default function Home() {
               离线 · 本机资料仍可查看
             </span>
           )}
-          <button className="profile-entry" onClick={() => go('settings')} aria-label="个人中心">
-            个人中心
-          </button>
+          {page === 'settings' ? (
+            <button
+              className="profile-entry header-back"
+              onClick={() => go(settingsReturnRef.current)}
+              aria-label="返回上一页"
+            >
+              <ArrowLeft size={19} aria-hidden="true" />
+              返回
+            </button>
+          ) : (
+            <button className="profile-entry" onClick={() => go('settings')} aria-label="个人中心">
+              个人中心
+            </button>
+          )}
         </div>
       </header>
       <main className="page-wrap">

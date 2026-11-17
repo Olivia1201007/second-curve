@@ -6,7 +6,11 @@ const config: CapacitorConfig = {
   webDir: 'out',
   backgroundColor: '#fbfaf8',
   loggingBehavior: 'none',
-  android: { backgroundColor: '#fbfaf8', webContentsDebuggingEnabled: false },
+  android: {
+    backgroundColor: '#fbfaf8',
+    webContentsDebuggingEnabled: false,
+    adjustMarginsForEdgeToEdge: 'auto',
+  },
   plugins: {
     SplashScreen: { launchShowDuration: 1200, backgroundColor: '#fbfaf8', showSpinner: false },
   },

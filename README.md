@@ -1,4 +1,8 @@
-# SECOND CURVE｜第二曲线 AI 4.1.0
+# SECOND CURVE｜第二曲线 AI（Android 4.1.1 / Windows 4.1.0）
+
+**安卓更新：** [下载 4.1.1 APK](https://github.com/Olivia1201007/second-curve/releases/download/native-cloud-v4.1.1-preview.1/second-curve-4.1.1-android-debug.apk) · [发布说明](https://github.com/Olivia1201007/second-curve/releases/tag/native-cloud-v4.1.1-preview.1)。
+本次修复个人中心返回入口与手机顶栏状态栏避让；沿用 4.1.0 测试签名。详见 [4.1.1 变更](docs/CHANGELOG-4.1.1.md)。
+Windows 安装包继续使用 [4.1.0 预览版](https://github.com/Olivia1201007/second-curve/releases/tag/native-cloud-v4.1.0-preview.1)。
 
 面向 35–55 岁失业、待业与职业转型人群的求职助手。帮助用户从真实工作任务中发现可迁移能力、对照岗位要求并整理求职材料。
 
