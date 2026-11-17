@@ -4,6 +4,7 @@ out
 coverage
 android
 src-tauri/target
+src-tauri/gen
 package-lock.json
 public/pdf.worker.min.mjs
 public/tesseract

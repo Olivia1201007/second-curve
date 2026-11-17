@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,7 +29,17 @@ import {
   Upload,
 } from 'lucide-react';
 import { createTasks, demoSkills, directions, Skill, Task } from '../lib/engine';
-import { careerService, JobMatch } from '../lib/career-service';
+import {
+  careerService,
+  clearModelSettings,
+  getCareerServiceStatus,
+  loadModelSettings,
+  saveModelSettings,
+  setCloudEnabled,
+  JobMatch,
+  type ModelProvider,
+  type ModelSettings,
+} from '../lib/career-service';
 import { Capacitor } from '@capacitor/core';
 import { App as NativeApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
@@ -67,6 +77,23 @@ type Application = {
   note: string;
 };
 type ToolTab = 'resume' | 'interview' | 'weekly' | 'portfolio';
+type ResultSource = 'local' | 'cloud';
+const resultSourceLabel = (source: ResultSource) =>
+  source === 'cloud' ? '云模型整理' : '本机规则整理';
+const emptyModelSettings: ModelSettings = {
+  provider: 'kanshan',
+  baseUrl: '',
+  model: '',
+  configured: false,
+  enabled: false,
+};
+const modelDefaults: Record<ModelProvider, { baseUrl: string; model: string }> = {
+  kanshan: { baseUrl: '', model: '' },
+  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash' },
+  kimi: { baseUrl: 'https://api.moonshot.cn/v1', model: 'kimi-k3.1-pro' },
+};
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : typeof error === 'string' ? error : fallback;
 type OcrWorker = import('tesseract.js').Worker;
 type SpeechRecognitionEventLike = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
 type SpeechRecognitionLike = {
@@ -150,7 +177,30 @@ export default function Home() {
     [appTitle, setAppTitle] = useState(''),
     [appCompany, setAppCompany] = useState(''),
     [appUrl, setAppUrl] = useState(''),
-    [isOnline, setIsOnline] = useState(true);
+    [isOnline, setIsOnline] = useState(true),
+    [serviceStatus, setServiceStatus] = useState<ReturnType<typeof getCareerServiceStatus>>({
+      configured: false,
+      enabled: false,
+      mode: 'local',
+      label: '本机规则整理',
+      endpoint: '',
+      native: false,
+    }),
+    [serviceBusy, setServiceBusy] = useState(''),
+    [serviceError, setServiceError] = useState(''),
+    [modelBusy, setModelBusy] = useState('读取模型配置'),
+    [modelSettings, setModelSettings] = useState<ModelSettings>(emptyModelSettings),
+    [modelDraft, setModelDraft] = useState({
+      provider: 'kanshan' as ModelProvider,
+      baseUrl: '',
+      model: '',
+    }),
+    [apiKey, setApiKey] = useState(''),
+    [skillsSource, setSkillsSource] = useState<ResultSource>('local'),
+    [generatedSource, setGeneratedSource] = useState<ResultSource>('local'),
+    [matchSource, setMatchSource] = useState<ResultSource>('local');
+  const serviceBusyRef = useRef(true);
+  const actionsBusy = Boolean(serviceBusy || modelBusy);
   const goal = selected || profile.desiredWork || '';
   const notify = (s: string) => {
     setToast(s);
@@ -197,10 +247,37 @@ export default function Home() {
       setJobText(localStorage.getItem('sc-job-text') || '');
       setPaused(localStorage.getItem('sc-plan-paused') === 'true');
       setFontScale(Number(localStorage.getItem('sc-font-scale') || 0));
+      setSkillsSource(localStorage.getItem('sc-skills-source') === 'cloud' ? 'cloud' : 'local');
+      setGeneratedSource(
+        localStorage.getItem('sc-generated-source') === 'cloud' ? 'cloud' : 'local',
+      );
     } catch {
       notify('部分旧数据无法读取，可在设置中重置体验数据');
     }
-    setReady(true);
+    let alive = true;
+    void loadModelSettings()
+      .then((settings) => {
+        if (!alive) return;
+        setModelSettings(settings);
+        setModelDraft({
+          provider: settings.provider,
+          baseUrl: settings.baseUrl,
+          model: settings.model,
+        });
+      })
+      .catch((error: unknown) => {
+        if (alive) setServiceError(errorMessage(error, '模型配置读取失败，可重新保存配置。'));
+      })
+      .finally(() => {
+        if (!alive) return;
+        setServiceStatus(getCareerServiceStatus());
+        setModelBusy('');
+        serviceBusyRef.current = false;
+        setReady(true);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
   useEffect(() => {
     if (!ready) return;
@@ -218,6 +295,8 @@ export default function Home() {
     localStorage.setItem('sc-job-text', jobText);
     localStorage.setItem('sc-plan-paused', paused ? 'true' : 'false');
     localStorage.setItem('sc-font-scale', String(fontScale));
+    localStorage.setItem('sc-skills-source', skillsSource);
+    localStorage.setItem('sc-generated-source', generatedSource);
   }, [
     ready,
     profile,
@@ -231,6 +310,8 @@ export default function Home() {
     jobText,
     paused,
     fontScale,
+    skillsSource,
+    generatedSource,
   ]);
   const go = (id: string) => {
     setPage(id);
@@ -257,7 +338,11 @@ export default function Home() {
       if (!alive) return;
       setIsOnline(status.connected);
       if (status.connected && !wasOnline)
-        notify('网络已恢复。本版的分析仍在本机运行，实时 AI 与岗位检索尚未接入。');
+        notify(
+          getCareerServiceStatus().mode === 'cloud'
+            ? '网络已恢复，可以继续使用云模型整理。'
+            : '网络已恢复。当前使用本机规则整理，岗位检索尚未接入。',
+        );
       wasOnline = status.connected;
     })
       .then((h) => (handle = h))
@@ -290,34 +375,124 @@ export default function Home() {
     };
     setRecords((r) => [item, ...r].slice(0, 30));
   };
+  const runCareerTask = async (name: string, action: (source: ResultSource) => Promise<void>) => {
+    if (serviceBusyRef.current) return;
+    const status = getCareerServiceStatus();
+    setServiceStatus(status);
+    if (status.mode === 'cloud' && !isOnline) {
+      setServiceError('当前网络不可用，文字尚未发送。联网后可以重试，或在个人设置中切回本机整理。');
+      return;
+    }
+    serviceBusyRef.current = true;
+    setServiceBusy(name);
+    setServiceError('');
+    try {
+      await action(status.mode);
+    } catch (error) {
+      const message = errorMessage(error, '整理未完成，请稍后重试。');
+      setServiceError(`${message} 输入和已有结果已保留。`);
+      notify(message);
+    } finally {
+      serviceBusyRef.current = false;
+      setServiceBusy('');
+    }
+  };
+  const updateModelConfiguration = async (
+    name: string,
+    action: () => Promise<ModelSettings>,
+    message: string,
+    resetDraft = false,
+  ) => {
+    if (serviceBusyRef.current) return;
+    serviceBusyRef.current = true;
+    setModelBusy(name);
+    setServiceError('');
+    try {
+      const settings = await action();
+      setModelSettings(settings);
+      if (resetDraft) {
+        setModelDraft({
+          provider: settings.provider,
+          baseUrl: settings.baseUrl,
+          model: settings.model,
+        });
+        setApiKey('');
+      }
+      setServiceStatus(getCareerServiceStatus());
+      notify(message);
+    } catch (error) {
+      const message = errorMessage(error, '设置未能保存，请重试。');
+      setServiceError(message);
+      notify(message);
+    } finally {
+      serviceBusyRef.current = false;
+      setModelBusy('');
+    }
+  };
+  const changeCloudEnabled = (enabled: boolean) =>
+    updateModelConfiguration(
+      '更新启用状态',
+      () => setCloudEnabled(enabled),
+      enabled ? '已启用云模型；点击整理按钮时才会发送相应文字。' : '已切回本机规则整理。',
+    );
+  const saveModelConfiguration = () =>
+    updateModelConfiguration(
+      '保存模型配置',
+      () =>
+        saveModelSettings({
+          provider: modelDraft.provider,
+          baseUrl: modelDraft.baseUrl.trim(),
+          model: modelDraft.model.trim(),
+          apiKey: apiKey.trim(),
+          enabled: false,
+        }),
+      '配置已保存在这台设备；勾选启用后即可使用云模型。',
+      true,
+    );
+  const clearModelConfiguration = () =>
+    updateModelConfiguration(
+      '清除模型配置',
+      clearModelSettings,
+      '已清除这台设备的模型配置和 API Key，当前使用本机规则整理。',
+      true,
+    );
+  const changeModelProvider = (provider: ModelProvider) => {
+    setModelDraft({ provider, ...modelDefaults[provider] });
+    setApiKey('');
+  };
   const analyze = async () => {
     if (!profile.role.trim() && !profile.tasks.trim()) {
       notify('先写下一份工作或一项具体任务，就可以开始整理。');
       return;
     }
-    const sourceTasks = profile.tasks || profile.resumeText || resumeText;
-    const out = await careerService.analyze({
-      role: profile.role,
-      years: profile.years,
-      tasks: [sourceTasks, profile.resumeText || resumeText].filter(Boolean).join('\n'),
-      strengths: profile.strengths,
-      weaknesses: profile.weaknesses,
-      reason: profile.reason,
+    await runCareerTask('经历能力整理', async (source) => {
+      const sourceTasks = profile.tasks || profile.resumeText || resumeText;
+      const out = await careerService.analyze({
+        role: profile.role,
+        years: profile.years,
+        tasks: [...new Set([sourceTasks, profile.resumeText || resumeText].filter(Boolean))].join(
+          '\n',
+        ),
+        strengths: profile.strengths,
+        weaknesses: profile.weaknesses,
+        reason: profile.reason,
+      });
+      setSkills(out.skills);
+      setSkillsSource(source);
+      setProfile((p) => ({ ...p, resumeText: p.resumeText || resumeText || '' }));
+      setDemo(false);
+      pushRecord(
+        '经历能力整理',
+        `${profile.role || '工作经历'} · ${resultSourceLabel(source)} · 拆出 ${out.tasks.length} 项任务`,
+        out.skills.map((x) => x.name),
+      );
+      if (!selected && profile.desiredWork) {
+        setSelected(profile.desiredWork);
+        setTasks(createTasks(profile.desiredWork));
+      }
+      go('skills');
+      notify('经历已整理好。你可以逐项确认、修改或删除。');
     });
-    setSkills(out.skills);
-    setProfile((p) => ({ ...p, resumeText: p.resumeText || resumeText || '' }));
-    setDemo(false);
-    pushRecord(
-      '经历能力整理',
-      `${profile.role || '工作经历'} · 拆出 ${out.tasks.length} 项任务`,
-      out.skills.map((x) => x.name),
-    );
-    if (!selected && profile.desiredWork) {
-      setSelected(profile.desiredWork);
-      setTasks(createTasks(profile.desiredWork));
-    }
-    go('skills');
-    notify('经历已整理好。你可以逐项确认、修改或删除。');
   };
   const startProfile = () => {
     setStep(0);
@@ -326,6 +501,7 @@ export default function Home() {
   const loadDemo = () => {
     setProfile(demoProfile);
     setSkills(demoSkills);
+    setSkillsSource('local');
     setTasks(demoTasks());
     setSelected('运营专员');
     setDemo(true);
@@ -464,15 +640,32 @@ export default function Home() {
       notify('先写下或导入一段真实工作经历。');
       return;
     }
-    const bullets = await careerService.polishExperience(text);
-    const output = `工作经历表达（请核对后使用）\n\n${bullets.map((x) => `• ${x}`).join('\n')}\n\n说明：以上仅调整表达顺序与用词，没有添加业绩或数字。请删除与你实际经历不符的内容。`;
-    setGenerated(output);
-    pushRecord(
-      '简历经历表达',
-      `${bullets.length} 条经历描述已整理`,
-      skills.map((s) => s.name),
-    );
-    notify('已生成可编辑的经历表达');
+    await runCareerTask('经历表达整理', async (source) => {
+      const bullets = await careerService.polishExperience(text);
+      const output = `工作经历表达（请核对后使用）\n\n${bullets.map((x) => `• ${x}`).join('\n')}\n\n说明：请逐条核对事实，删除与你实际经历不符的内容；不要使用未经确认的业绩或数字。`;
+      setGenerated(output);
+      setGeneratedSource(source);
+      pushRecord(
+        '简历经历表达',
+        `${resultSourceLabel(source)} · ${bullets.length} 条经历描述已整理`,
+        skills.map((s) => s.name),
+      );
+      notify('已生成可编辑的经历表达');
+    });
+  };
+  const polishDraft = async () => {
+    if (!experienceDraft.trim()) {
+      notify('请先写下一段实际工作经历');
+      return;
+    }
+    await runCareerTask('经历表达整理', async (source) => {
+      const out = await careerService.polishExperience(experienceDraft);
+      setGenerated(out.join('\n'));
+      setGeneratedSource(source);
+      setToolTab('resume');
+      go('toolkit');
+      notify('已整理措辞，请核对准确后再使用');
+    });
   };
   const generateDoc = (kind: 'resume' | 'intro' | 'email') => {
     const role = goal || profile.desiredWork || '目标岗位';
@@ -492,6 +685,7 @@ export default function Home() {
     if (kind === 'email')
       text = `主题：应聘${role}｜${profile.role || '相关工作'}经验\n\n您好：\n\n我想应聘贵方的${role}岗位。我过去从事${profile.role || '相关工作'}，有${profile.years || '相关'}工作经验，实际工作内容包括：\n${exp}\n\n随信附上简历，期待有机会进一步沟通。谢谢！\n\n此致\n敬礼\n[请填写姓名与联系方式]`;
     setGenerated(text);
+    setGeneratedSource('local');
     setToolTab('resume');
     notify('内容已生成，可继续修改、复制或导出 PDF');
   };
@@ -506,13 +700,16 @@ export default function Home() {
       profile.strengths,
       skills.map((s) => s.name + ' ' + s.evidence).join(' '),
     ].join('\n');
-    const result = await careerService.matchJob(text, jobText);
-    setMatch(result);
-    pushRecord(
-      '招聘信息对照',
-      `识别到 ${result.requirements.length} 个常见要求词`,
-      result.evidence,
-    );
+    await runCareerTask('招聘信息对照', async (source) => {
+      const result = await careerService.matchJob(text, jobText);
+      setMatch(result);
+      setMatchSource(source);
+      pushRecord(
+        '招聘信息对照',
+        `${resultSourceLabel(source)} · 整理出 ${result.requirements.length} 项岗位要求`,
+        result.evidence,
+      );
+    });
   };
   const exportPdf = () => {
     if (!generated.trim()) {
@@ -564,7 +761,11 @@ export default function Home() {
     notify('已下载文本记录');
   };
   const eraseData = () => {
-    if (!window.confirm('删除保存在这台浏览器里的职业档案、任务和历史记录？此操作无法撤回。'))
+    if (
+      !window.confirm(
+        '删除保存在这台设备里的职业档案、任务和历史记录？此操作无法撤回。模型配置和 API Key 可在个人设置中单独清除。',
+      )
+    )
       return;
     Object.keys(localStorage)
       .filter((k) => k.startsWith('sc-'))
@@ -579,6 +780,10 @@ export default function Home() {
     setJobText('');
     setMatch(null);
     setDemo(false);
+    setSkillsSource('local');
+    setGeneratedSource('local');
+    setMatchSource('local');
+    setServiceError('');
     setPage('home');
     notify('本机资料已删除');
   };
@@ -659,16 +864,25 @@ export default function Home() {
               离线 · 本机资料仍可查看
             </span>
           )}
-          <button
-            className="profile-entry"
-            onClick={() => go(profileReady ? 'settings' : 'profile')}
-            aria-label="个人中心"
-          >
+          <button className="profile-entry" onClick={() => go('settings')} aria-label="个人中心">
             个人中心
           </button>
         </div>
       </header>
       <main className="page-wrap">
+        {serviceError && (
+          <div className="service-error" role="alert">
+            <span>{serviceError}</span>
+            <button onClick={() => setServiceError('')} aria-label="关闭整理错误提示">
+              关闭
+            </button>
+          </div>
+        )}
+        {serviceBusy && (
+          <div className="service-progress" role="status">
+            正在{serviceBusy}，请稍候。{serviceStatus.mode === 'cloud' ? '本次使用云模型。' : ''}
+          </div>
+        )}
         {page === 'home' && (
           <section className="welcome-home">
             <div className="welcome-content">
@@ -817,7 +1031,7 @@ export default function Home() {
                       <b>{importing ? '正在本机读取简历…' : '也可以上传简历'}</b>
                       <p>
                         支持 PDF、Word（DOCX）、TXT、Markdown
-                        和图片；文件在本机读取。图片在浏览器本机识别，不上传。
+                        和图片；文件和图片在本机读取、识别。启用云模型后，点击整理按钮会发送相应文字。
                       </p>
                     </div>
                     <label className="btn secondary small">
@@ -971,15 +1185,17 @@ export default function Home() {
                     <ArrowRight size={16} />
                   </button>
                 ) : (
-                  <button className="btn primary" onClick={analyze}>
-                    整理我的经历
+                  <button className="btn primary" onClick={analyze} disabled={actionsBusy}>
+                    {serviceBusy === '经历能力整理' ? '正在整理…' : '整理我的经历'}
                     <ArrowRight size={16} />
                   </button>
                 )}
               </div>
             </div>
             <p className="stage-note">
-              不用因为年龄给自己设限。我们只看实际做过的事和想尝试的方向。
+              {serviceStatus.mode === 'cloud'
+                ? '已启用云模型：点击整理会发送岗位、年限、工作内容、导入的简历文字、优势、待提升项与求职原因。请先删除不需要发送的个人信息。'
+                : '当前使用本机规则整理。云模型可在安装版的个人中心配置和启用。'}
             </p>
           </section>
         )}
@@ -1000,8 +1216,8 @@ export default function Home() {
               <Sparkles size={15} />
               {demo
                 ? '演示数据：内容为示例经历。'
-                : '本地演示分析：根据文字线索整理，尚未调用真实 AI。'}
-              <span>不会虚构业绩或就业结果。</span>
+                : `${resultSourceLabel(skillsSource)}：请核对每条能力对应的真实经历。`}
+              <span>不承诺就业结果，未经确认的内容请修改或删除。</span>
             </div>
             <div className="skill-actions">
               <button
@@ -1095,23 +1311,13 @@ export default function Home() {
                 area
                 placeholder="例如：以前负责公司采购，经常跟供应商沟通，也负责整理资料。"
               />
-              <button
-                className="btn secondary"
-                onClick={async () => {
-                  if (!experienceDraft.trim()) {
-                    notify('请先写下一段实际工作经历');
-                    return;
-                  }
-                  const out = await careerService.polishExperience(experienceDraft);
-                  setGenerated(out.join('\n'));
-                  setToolTab('resume');
-                  go('toolkit');
-                  notify('已整理措辞，请核对准确后再使用');
-                }}
-              >
+              <button className="btn secondary" onClick={polishDraft} disabled={actionsBusy}>
                 <Sparkles size={15} />
-                整理表达
+                {serviceBusy === '经历表达整理' ? '正在整理…' : '整理表达'}
               </button>
+              {serviceStatus.mode === 'cloud' && (
+                <p className="service-send-note">点击后会把上方这段经历文字发送到所选云模型。</p>
+              )}
             </div>
           </section>
         )}
@@ -1189,31 +1395,35 @@ export default function Home() {
               <p className="muted-text">
                 我们会对照你的经历指出已提及的要求和仍需确认的部分。不搜索或编造企业、薪资和职位。
               </p>
+              {serviceStatus.mode === 'cloud' && (
+                <p className="service-send-note">
+                  点击对照会将本页岗位文字与已填写的经历、优势和技能依据发送到所选云模型。
+                </p>
+              )}
               <textarea
                 className="large-textarea"
                 value={jobText}
                 onChange={(e) => setJobText(e.target.value)}
                 placeholder="粘贴招聘平台上的岗位职责和任职要求……"
               />
-              <button className="btn primary" onClick={matchPosting}>
-                对照我的经历
+              <button className="btn primary" onClick={matchPosting} disabled={actionsBusy}>
+                {serviceBusy === '招聘信息对照' ? '正在对照…' : '对照我的经历'}
                 <ArrowRight size={16} />
               </button>
               {match && (
                 <div className="match-result">
+                  <p className="service-send-note">{resultSourceLabel(matchSource)}</p>
                   <div className="match-note">
                     <ShieldCheck size={16} />
                     {match.note}
                   </div>
                   <div className="match-cols">
                     <div>
-                      <b>经历中提到的关键词</b>
-                      <p>
-                        {match.evidence.join('、') || '暂未找到直接对应词，请检查经历是否写具体'}
-                      </p>
+                      <b>经历中已有的依据</b>
+                      <p>{match.evidence.join('、') || '暂未找到直接依据，请检查经历是否写具体'}</p>
                     </div>
                     <div>
-                      <b>建议核实或补充的关键词</b>
+                      <b>建议核实或补充的要求</b>
                       <p>
                         {match.gaps.join('、') ||
                           '没有识别出额外关键词。仍请人工核对完整岗位要求。'}
@@ -1392,24 +1602,26 @@ export default function Home() {
               <div className="tool-layout">
                 <aside className="tool-menu panel">
                   <span className="small-cap">选择一个小工具</span>
-                  <button onClick={() => polished()}>
+                  <button onClick={polished} disabled={actionsBusy}>
                     <Sparkles size={16} />
-                    整理工作经历表达
+                    {serviceBusy === '经历表达整理' ? '正在整理…' : '整理工作经历表达'}
                   </button>
-                  <button onClick={() => generateDoc('resume')}>
+                  <button onClick={() => generateDoc('resume')} disabled={actionsBusy}>
                     <FileText size={16} />
                     生成目标岗位简历草稿
                   </button>
-                  <button onClick={() => generateDoc('intro')}>
+                  <button onClick={() => generateDoc('intro')} disabled={actionsBusy}>
                     <MessageCircle size={16} />
                     准备自我介绍
                   </button>
-                  <button onClick={() => generateDoc('email')}>
+                  <button onClick={() => generateDoc('email')} disabled={actionsBusy}>
                     <Clipboard size={16} />
                     写求职沟通文本
                   </button>
                   <div className="tool-disclaimer">
-                    本地示例工具，不会自动发送材料，也不会补写业绩。
+                    {serviceStatus.mode === 'cloud'
+                      ? '整理经历表达会发送相关经历文字到所选云模型。其余草稿使用本机模板；不会自动投递材料。'
+                      : '当前使用本机规则与模板；不会自动投递材料。'}
                   </div>
                 </aside>
                 <div className="editor panel">
@@ -1452,6 +1664,9 @@ export default function Home() {
                     </button>
                   </div>
                   <p className="editor-note">
+                    {generated
+                      ? `草稿来源：${resultSourceLabel(generatedSource)}，可自行修改。`
+                      : ''}
                     PDF 通过浏览器打印功能生成。打印窗口中选择“保存为 PDF”。
                   </p>
                 </div>
@@ -1630,10 +1845,135 @@ export default function Home() {
             <PageHeading
               eyebrow="个人设置"
               title="你的资料由你掌握"
-              desc="基本体验无需注册。资料默认保存在当前浏览器，可随时删除。"
+              desc="基本体验无需注册。资料默认保存在当前设备，可随时删除。"
               warm="一次求职受挫，不代表你没有价值。"
             />
             <div className="panel settings-panel">
+              <div className="cloud-settings">
+                <h3>云模型设置</h3>
+                <p>
+                  软件直接连接你配置的云模型，使用时需要联网。开启后，点击经历分析、经历表达或招聘对照时，才会把该次所需的文字发送到所选模型平台。
+                  文件和图片在本机解析；请先删除不需要发送的联系方式和敏感内容。
+                </p>
+                {!serviceStatus.native && !modelBusy && (
+                  <p className="cloud-unavailable">
+                    网页预览使用本机规则整理。请在 Windows 或 Android 安装版中配置云模型。
+                  </p>
+                )}
+                <form
+                  className="model-config-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveModelConfiguration();
+                  }}
+                >
+                  <fieldset disabled={!serviceStatus.native || actionsBusy}>
+                    <div className="model-config-grid">
+                      <label className="field">
+                        <span>模型平台</span>
+                        <select
+                          value={modelDraft.provider}
+                          onChange={(event) =>
+                            changeModelProvider(event.target.value as ModelProvider)
+                          }
+                        >
+                          <option value="kanshan">看山（赛事平台）</option>
+                          <option value="deepseek">DeepSeek</option>
+                          <option value="kimi">Kimi</option>
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span>模型名 / Model ID</span>
+                        <input
+                          value={modelDraft.model}
+                          onChange={(event) =>
+                            setModelDraft((draft) => ({ ...draft, model: event.target.value }))
+                          }
+                          placeholder="按平台控制台填写"
+                          required
+                          autoCapitalize="none"
+                          spellCheck={false}
+                        />
+                      </label>
+                      <label className="field model-config-wide">
+                        <span>接口地址 / Base URL</span>
+                        <input
+                          type="url"
+                          value={modelDraft.baseUrl}
+                          onChange={(event) =>
+                            setModelDraft((draft) => ({ ...draft, baseUrl: event.target.value }))
+                          }
+                          placeholder="https://…（填写平台提供的 Base URL）"
+                          required
+                          autoCapitalize="none"
+                          spellCheck={false}
+                        />
+                      </label>
+                      <label className="field model-config-wide">
+                        <span>API Key</span>
+                        <input
+                          type="password"
+                          value={apiKey}
+                          onChange={(event) => setApiKey(event.target.value)}
+                          placeholder={
+                            modelSettings.configured
+                              ? '同平台、同地址时可留空保留已存密钥'
+                              : '填写这台设备使用的 API Key'
+                          }
+                          autoComplete="new-password"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                        />
+                      </label>
+                    </div>
+                    <p className="model-config-help">
+                      {modelDraft.provider === 'kanshan'
+                        ? '看山的接口地址和模型名请按领取额度后的调用示例填写。'
+                        : '已提供常用接口地址和模型名示例，请按账号实际可用模型确认。'}
+                      仅支持 HTTPS；平台需提供兼容 Chat Completions 的接口。
+                    </p>
+                    <p className="model-config-help">
+                      API Key
+                      保存在设备的系统安全存储中，不会显示或写入网页缓存。更换平台或接口地址后需要重新填写密钥；保存后输入框会清空。保存配置不会调用模型或消耗额度。
+                    </p>
+                    <div className="setting-controls model-config-actions">
+                      <button type="submit" className="btn primary">
+                        {modelBusy === '保存模型配置' ? '正在保存…' : '保存模型配置'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn secondary"
+                        onClick={() => void clearModelConfiguration()}
+                      >
+                        清除配置与密钥
+                      </button>
+                    </div>
+                  </fieldset>
+                </form>
+                {serviceStatus.configured && (
+                  <p className="cloud-endpoint">
+                    已保存：{modelSettings.model} · {serviceStatus.endpoint}
+                  </p>
+                )}
+                {modelBusy && (
+                  <p className="cloud-mode" role="status">
+                    正在{modelBusy}，请稍候。
+                  </p>
+                )}
+                <label className="cloud-consent">
+                  <input
+                    type="checkbox"
+                    checked={serviceStatus.enabled}
+                    disabled={!serviceStatus.configured || actionsBusy}
+                    onChange={(e) => void changeCloudEnabled(e.target.checked)}
+                  />
+                  <span>我已了解文字发送范围，启用云模型整理</span>
+                </label>
+                <p className="cloud-mode" role="status">
+                  当前模式：{resultSourceLabel(serviceStatus.mode)}。
+                  关闭开关后，之后的整理使用本机规则；已经发送的请求无法撤回。
+                </p>
+              </div>
               <div>
                 <h3>文字大小</h3>
                 <p>按需放大或缩小页面文字。</p>
@@ -1655,14 +1995,16 @@ export default function Home() {
               <div>
                 <h3>演示数据</h3>
                 <p>用示例经历体验功能。演示内容会明确标记，不会混入你的真实资料。</p>
-                <button className="btn secondary" onClick={loadDemo}>
+                <button className="btn secondary" onClick={loadDemo} disabled={actionsBusy}>
                   载入演示数据
                 </button>
               </div>
               <div>
                 <h3>删除本机资料</h3>
-                <p>删除职业档案、简历草稿、行动计划和历史记录。删除后无法恢复。</p>
-                <button className="btn danger-button" onClick={eraseData}>
+                <p>
+                  删除职业档案、简历草稿、行动计划和历史记录。删除后无法恢复。模型配置与密钥请在上方单独清除。
+                </p>
+                <button className="btn danger-button" onClick={eraseData} disabled={actionsBusy}>
                   <Trash2 size={15} />
                   删除我的资料
                 </button>
@@ -1670,8 +2012,11 @@ export default function Home() {
               <div className="privacy-block">
                 <ShieldCheck size={16} />
                 <span>
-                  当前版本未连接真实 AI 服务。文本分析和面试提示均由本地规则生成；图片 OCR
-                  使用随站点提供的本地语言模型，图片内容在浏览器内处理。
+                  {serviceStatus.mode === 'cloud'
+                    ? '已启用云模型整理；每次主动点击整理时才会将对应文字直接发送到所选模型平台。个人档案与草稿保存在本机，面试结构提示和行动计划仍由本机规则生成。'
+                    : '当前使用本机规则整理，不会因填写档案或导入文件而自动发送内容到云端。'}
+                  图片 OCR
+                  使用软件内提供的语言资源，图片内容在本机处理。删除本机资料不会删除服务平台已处理的数据。
                 </span>
               </div>
             </div>

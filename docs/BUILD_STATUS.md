@@ -1,18 +1,22 @@
-# APP 4.0 构建状态
+# APP 4.1.0 验证记录说明
 
-更新时间：2026-11-16（Asia/Shanghai）
+本次在 v1.0.0 标签源码上增加原生云模型桥，应用版本更新为 4.1.0、Android versionCode 更新为 5。原 4.0 构建记录不能证明新版通过验收。
 
-| 项目                            | 状态           | 证据/限制                                                                                                         |
-| ------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Web 静态生产构建                | 通过           | `npm run build`，Next.js 16.4.6                                                                                   |
-| ESLint                          | 通过           | `npm run lint`                                                                                                    |
-| TypeScript                      | 通过           | `npm run typecheck`                                                                                               |
-| 单元测试                        | 通过           | `npm test`，5 项业务规则测试                                                                                      |
-| Prettier                        | 通过           | `npm run format:check`                                                                                            |
-| 生产依赖审计                    | 通过           | `npm audit --omit=dev --audit-level=high`：0 个高危及以上；开发工具全量审计仍报告仅开发依赖的 moderate advisories |
-| Capacitor Android 工程/资源同步 | 通过           | Actions run `43892149864` 的 `npx cap sync android` 成功                                                          |
-| Android Debug APK               | 已构建         | Actions run `43892149864` 成功；未签名 Debug APK，v1.0.0 Release 再生成 APK 与 SHA256                             |
-| Windows MSI/EXE                 | Release 待构建 | 本机没有 Windows/Rust 工具链；由 v1.0.0 标签触发 Windows GitHub-hosted Actions，成功后提供安装包与 SHA256         |
-| Sites Web URL                   | 已有           | https://second-curve-career.wiryfox513.chatgpt.site/；APP 4.0 尚未发布到该 URL                                    |
-| GitHub 公开仓库                 | 已发布         | https://github.com/Olivia1201007/second-curve；`main` 指向 `9c50fa3`，CI run `43892149778` 成功                   |
-| Gitee 镜像                      | 未创建         | 未授权；已有手动镜像脚本与可选工作流                                                                              |
+本次已完成以下构建与静态验证：
+
+| 检查                                          | 结果                                                  |
+| --------------------------------------------- | ----------------------------------------------------- |
+| Vitest 业务与桥接测试                         | 3 个测试文件、16 项测试通过                           |
+| ESLint、TypeScript、Prettier                  | 通过                                                  |
+| Next.js 生产静态导出                          | 通过                                                  |
+| Windows Rust `cargo check` 与 release 编译    | 通过                                                  |
+| Windows NSIS 安装包                           | 已生成 4.1.0 x64 EXE 安装包                           |
+| Android Java 编译、资源同步与 `assembleDebug` | 通过                                                  |
+| Android APK 元数据                            | 4.1.0，versionCode 5，最低 Android API 23             |
+| APK 签名验证                                  | `apksigner verify` 通过，v1/v2 签名有效；使用测试签名 |
+
+Rust 原生模块 2 项单元测试通过，覆盖接口地址与模型响应校验。MSI 不作为本次交付产物。
+
+尚未完成安装后的界面操作、Android 真机检查、设备重启后的配置读写或真实模型端到端验收。Windows 界面检查因 Computer Use 应用访问授权超时未完成，不能把进程启动或编译成功视为界面验收通过。
+
+看山凭证尚未取得，接口地址、模型 ID、鉴权和真实返回协议仍需按工作台调用示例确认。当前公开网站没有随本地修改重新发布。本次修改未推送到 GitHub 或创建新版 Release。

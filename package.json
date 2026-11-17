@@ -1,6 +1,6 @@
 {
   "name": "second-curve",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": false,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
@@ -24,6 +24,7 @@
     "@capacitor/network": "^7.0.4",
     "@capacitor/share": "^7.0.4",
     "@capacitor/splash-screen": "^7.0.5",
+    "@tauri-apps/api": "^2.12.5",
     "@tesseract.js-data/chi_sim": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
     "lucide-react": "^0.468.0",

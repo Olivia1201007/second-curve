@@ -1,80 +1,59 @@
-# SECOND CURVE｜第二曲线 AI
+# SECOND CURVE｜第二曲线 AI 4.1.0
 
-**AI Career Transition & Re-employment Copilot** · 面向 35–55 岁失业、待业及职业转型人群的求职助手。
+面向 35–55 岁失业、待业与职业转型人群的求职助手。帮助用户从真实工作任务中发现可迁移能力、对照岗位要求并整理求职材料。
 
-> 过去的经验，值得被重新看见。
+Windows 与 Android 安装版已加入**软件原生模块直接调用云模型**的实现。软件包含界面、职业业务逻辑和模型适配器，不需要另开 Python 后端或部署项目服务器；模型在供应商云端运行，使用云模型时仍需联网。
 
-[Web 在线体验](https://second-curve-career.wiryfox513.chatgpt.site/) · [GitHub Public 仓库](https://github.com/Olivia1201007/second-curve) · v1.0.0 Release 安装包待 GitHub Actions 构建完成
+## 使用云模型
 
-SECOND CURVE 帮助用户从真实工作任务中发现可迁移能力，整理求职材料并开始下一步行动。页面不以年龄推断能力，不承诺就业结果，也不编造招聘、工资或用户业绩。
+1. 安装新版 Windows 或 Android 应用，打开「个人中心 → 云模型设置」。
+2. 选择看山、DeepSeek 或 Kimi，填写该账号有权限使用的 Base URL、模型 ID 和 API Key。
+3. 保存配置，再勾选「我已了解文字发送范围，启用云模型整理」。
+4. 回到经历分析、招聘对照或经历表达页面，主动点击整理。
 
-## 社会价值与目标用户
+默认使用本机规则。保存配置不会自动启用云模型；可随时关闭或清除配置。关闭后使用本机规则，云请求失败会显示错误，不会把本机规则结果冒充模型成功结果。网页预览继续使用本机规则，原生模型设置只在 Windows / Android 安装版中可用。
 
-35–55 岁求职者可能需要在收入、家庭、地点与数字技能限制下尽快重新就业。产品用清晰的小步流程梳理既有经验，帮助用户把做过的事说明白、对照真实岗位要求、准备简历和面试。核心体验无需注册，个人资料默认留在当前设备。
+安装包不含团队共享密钥。每台设备自行配置自己的密钥：Windows 使用系统凭据管理器，Android 使用 AndroidKeyStore 加密保存。不要把真实密钥写入源码、`.env`、`NEXT_PUBLIC_*`、静态资源或安装包。
 
-## 当前功能（真实实现）
+**看山尚未领取额度和凭证，未做真实调用验收。** 当前实现支持 Bearer API Key + Chat Completions 兼容协议；领取后须核对工作台的真实接口地址、模型 ID、请求字段与返回格式。若协议不同，需要调整原生适配器。看山模型调用与知乎内容搜索是两项独立能力。
 
-- 极简首页，新用户从空白档案开始；演示内容需要主动加载且会显示“演示数据”。
-- 四步职业经历整理、语音输入（取决于系统/浏览器支持）和 PDF/DOCX/TXT/图片导入；文件解析与 OCR 在本机运行。
-- 根据用户输入生成带原文依据的技能线索、任务拆解和经验迁移方向。
-- 三类职业方向及可修改目标；粘贴真实招聘描述进行关键词对照。
-- 简历、自我介绍与求职邮件草稿；面试回答结构练习；行动计划、岗位跟进和 PDF 打印。
-- Android 原生壳：本地静态资源打包、应用图标/启动页、系统返回、网络状态提示、系统分享。
-- Windows Tauri 桌面包：本地静态资源、独立窗口、系统应用图标。
+## 功能范围
 
-## 真实边界
+| 功能                               | 默认本机模式               | 启用云模型后                   |
+| ---------------------------------- | -------------------------- | ------------------------------ |
+| 经历分析 `analyze`                 | 本机规则拆解任务与技能线索 | 云模型按结构整理，保留原文依据 |
+| 招聘对照 `matchJob`                | 用户提供文本的关键词对照   | 云模型整理要求、依据与待补充项 |
+| 经历表达 `polishExperience`        | 本机模板                   | 云模型整理用户已提供的事实     |
+| 方向、行动计划、面试结构及其他草稿 | 本机规则与模板             | 仍由本机规则与模板生成         |
 
-- 当前没有真实模型 API、知乎接口、实时招聘检索、工资数据库、账号/云同步或服务器数据库。工作分析使用本地规则。
-- “求职匹配”仅将用户提供的经历与招聘文字做关键词对照，不是正式评分或录用概率。
-- 薪资不输出市场估算；招聘平台链接由用户自行访问并核实。
-- 应用离线可打开本地页面并读取本机已保存资料。实时 AI/招聘服务当前没有接入。
-- 网站链接在中国大陆的网络可达性未做覆盖性测试，不能承诺无需 VPN 在所有地区稳定访问。Android/Windows 包内核心资源本地打包，不启动外部网站。
+支持 PDF/DOCX/TXT/图片导入，文件解析和 OCR 在本机执行；职业档案、草稿、任务和岗位跟进保存在本机 `localStorage`。云模型仅在主动点击上述三个功能时接收该次所需文字。基础脱敏不是完整匿名化，发送前请去除不必要的个人信息与单位机密。
 
-## 产品截图与图标
+没有自动招聘检索、知乎帖子检索、工资数据库、账号或跨设备同步。岗位由用户查阅真实招聘信息后粘贴；模型分析不等于正式评分或录用概率，不承诺就业结果。旧网站 [Web 体验](https://second-curve-career.wiryfox513.chatgpt.site/) 本次没有重新发布。
 
-![SECOND CURVE 品牌图标](docs/assets/second-curve-icon-1024.png)
-
-首页在线预览：[打开体验](https://second-curve-career.wiryfox513.chatgpt.site/)。当前仓库包含品牌图标；可复现的界面截图待加入正式设备截图流程。
-
-## 技术栈与架构
-
-- Web：Next.js 16、React 19、TypeScript、静态导出。
-- Android：Capacitor 7，`out/` 被复制到 Android app assets。
-- Windows：Tauri 2，窗口加载安装包内的 `out/` 文件。
-- 本地服务：`lib/engine.ts`、`lib/career-service.ts`。
-- 数据：浏览器/WebView `localStorage`；没有服务器个人档案存储。
-- OCR/文件：本地 Tesseract.js 语言资源、PDF.js、Mammoth。
-
-详细说明：[架构](docs/architecture.md) · [技术审查](docs/TECH_REVIEW.md) · [数据隐私](docs/PRIVACY.md)
-
-## 目录结构
+## 架构与目录
 
 ```text
-app/                    Next.js 页面、样式、Logo 与元数据
-lib/                    职业领域规则、分析服务接口
-public/                 OCR、PDF worker 与离线语言资源
-android/                Capacitor Android 原生工程
-src-tauri/              Tauri 桌面工程与 Windows 打包图标
-.github/workflows/      质量检查、Android、桌面 Release 与镜像工作流
-tests/                  职业规则单元测试
-docs/                   产品计划、技术审查、安装与隐私文档
-scripts/                Gitee 镜像同步脚本
+Next.js 静态页面 out/
+  → CareerProvider（本机规则 / 云模型）
+  → lib/native-model.ts
+      ├─ Windows Tauri commands → Rust HTTPS → 云模型
+      └─ Android CareerModel plugin → Java HTTPS → 云模型
+
+lib/model-career-provider.ts   提示词、基础脱敏、返回结构及依据校验
+lib/engine.ts                 本机职业规则
+src-tauri/src/model.rs        Windows 配置、密钥与 HTTPS 请求
+android/app/src/main/java/    Android 配置、密钥与 HTTPS 请求
+tests/                       业务与原生桥前端契约测试
 ```
 
-## 本地 Web 开发
+详见 [架构](docs/architecture.md)、[接口](docs/API.md)、[隐私](docs/PRIVACY.md)、[接入状态](docs/INTEGRATIONS.md) 和 [4.1.0 变更](docs/CHANGELOG-4.1.0.md)。
 
-要求 Node.js 22 或更高版本：
+## 开发与构建
+
+要求 Node.js 22+。前端检查与静态构建：
 
 ```bash
 npm ci
-npm run dev
-```
-
-构建静态网站：`npm run build`，输出到 `out/`。
-
-## 工程检查
-
-```bash
 npm run lint
 npm run format:check
 npm run typecheck
@@ -82,53 +61,27 @@ npm test
 npm run build
 ```
 
-GitHub Actions 在 `main` 和 PR 运行上述检查；Android APK、Windows 安装包由标签 `v*` 触发构建并附带 SHA-256 文件。APK 当前是 Debug 评委体验版，不是 Android 商店签名发布包。
+Windows 需要 Rust stable、Microsoft C++ Build Tools、Windows SDK 和 WebView2 Runtime：
 
-## Android
+```powershell
+npm run tauri:dev
+npm run tauri:build
+```
 
-安装 Android Studio、Android SDK Platform 35、JDK 21：
+安装包输出到 `src-tauri/target/release/bundle/`。
+
+Android 需要 JDK 21、Android SDK Platform 35 与 Build Tools：
 
 ```bash
-npm ci
 npm run android:sync
 cd android
 ./gradlew assembleDebug
 ```
 
-APK：`android/app/build/outputs/apk/debug/app-debug.apk`。安装、签名和离线说明见 [Android 指南](docs/app-installation.md)。Android Debug APK 已由 GitHub Actions 构建；公开下载文件以 v1.0.0 Release 实际生成的资产为准。
+APK 输出到 `android/app/build/outputs/apk/debug/app-debug.apk`，属于 Debug 测试包。正式发行应配置团队签名。详见 [开发](docs/development.md)、[发布](docs/deployment.md)、[Android 安装](docs/app-installation.md) 和 [Windows 安装](docs/WINDOWS.md)。构建通过不代表已完成真机或看山真实服务验收，实际验证以交付记录为准。
 
-## Windows
+## 数据来源与贡献
 
-安装 Rust stable、Microsoft C++ Build Tools 与 WebView2 Runtime：
+知乎数据开放平台：[官方入口](https://developer.zhihu.com/)。当前没有知乎内容接口凭证与检索实现；招聘/工资数据也未接入。新增检索应在取得授权后记录原始来源、时间和有效性。
 
-```powershell
-npm ci
-npm run tauri:dev
-npm run tauri:build
-```
-
-安装包输出到 `src-tauri/target/release/bundle/`。Windows 打包工作流已配置为使用 GitHub Actions `windows-latest`；v1.0.0 Release 成功前没有可下载安装包。
-
-## 环境变量与 API
-
-`.env.example` 提供未来服务端适配器占位配置；**当前应用不读取这些变量，也无需配置 API key**。绝不可将模型密钥加入 `NEXT_PUBLIC_*`、网页静态资源、Android APK 或 Windows 安装包。真实模型需通过受控服务端 API 代理接入。
-
-## 数据来源与合规
-
-- 知乎数据开放平台：[官方入口](https://developer.zhihu.com/)，本项目未取得 API 授权，未抓取或展示知乎内容。
-- 招聘与工资：未连接招聘数据 API 或工资数据库；用户访问真实招聘平台后自行核实。
-- AI 推理：当前无远程模型调用，页面规则结果会明确标为本地分析。
-
-## 参赛说明
-
-评委指南：[docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) · 产品计划：[docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) · 开发说明：[docs/development.md](docs/development.md) · 部署：[docs/deployment.md](docs/deployment.md) · 工程规范：[docs/engineering-standards.md](docs/engineering-standards.md) · GitHub 发布准备：[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)
-
-## 开源与贡献
-
-MIT License。欢迎查看 [贡献指南](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md) 与 [安全政策](SECURITY.md)。请勿提交真实简历、雇主机密或任何 API/签名凭证。
-
----
-
-# English
-
-SECOND CURVE helps mid-career job seekers turn real work experience into transferable skills and practical job-search actions. It is available as a static web app and is being packaged for Android (Capacitor) and Windows (Tauri). Current analysis is local and rule-based; no live AI, job feed, salary dataset, or cloud profile storage is connected. No employment outcome is guaranteed.
+MIT License。请勿提交真实简历、雇主机密、模型密钥、签名文件或密码。

@@ -1,13 +1,19 @@
-# 发布与部署
+# 发布与打包（4.1.0）
+
+## 安装版
+
+Windows 和 Android 均将 `out/` 页面与原生模型模块编进应用。无需部署项目后端、配置公网项目 API 或启动 Python。用户安装后在个人中心配置供应商信息和自己的密钥，启用后由原生模块联网访问云模型。不得在构建环境或安装包中植入团队共享密钥。
+
+Windows：`npm ci` 后运行 `npm run tauri:build`，产物在 `src-tauri/target/release/bundle/`。需要 Rust、MSVC、Windows SDK；运行需要 WebView2。
+
+Android：`npm ci` 后运行 `npm run android:sync`，再在 `android/` 运行 `./gradlew assembleDebug`。需要 JDK 21 和 Android SDK 35；产物在 `android/app/build/outputs/apk/debug/`。Debug APK 供测试，正式发布须使用组织签名并妥善保管 keystore。
+
+版本号为 4.1.0；源码下载标签沿用 v1.0.0，目录名不代表本次应用版本。安装包构建、设备验收、真实模型验收是三项不同检查，应分别记录。
 
 ## Web
 
-当前公开体验链接继续由 Sites 托管。配置在 `.openai/hosting.json`；更新后静态构建 `out/` 并经 Sites 保存版本/部署流程发布。未完成 ICP 备案和大陆网络实测前，不承诺全国稳定直连。
+静态网页继续使用本机规则；原生模型设置不能在普通浏览器中启用。若未来希望网页也使用模型，需要重新设计服务端鉴权和密钥保护，不能将安装版密钥逻辑复制到浏览器存储。当前公开 Sites 链接未因本次本地打包而更新。
 
-## GitHub
+## GitHub 与后续发布
 
-仓库主分支 `main` 触发质量检查和 Web 构建；标签 `v*` 触发 Android debug APK、Windows 安装包和 SHA-256 文件构建并创建 Release。Release 工作流未配置 Android 发行签名，因此 Android artifact 明确为 Debug 体验版。正式签名需要通过 GitHub Secrets 配置签名文件与密码，不能将 keystore 提交到仓库。
-
-## Gitee 镜像
-
-运行 `scripts/sync-gitee-mirror.sh <gitee-url>` 前需在本机完成 Gitee 身份验证与创建空仓库。该脚本不会创建 Gitee 账号或仓库，也不会声称镜像已同步。
+保留原有质量检查及标签构建工作流。提交前排除 `node_modules`、`out`、`.next`、Rust `target`、Android 构建缓存、密钥与签名文件。发布时附上实际构建产物和 SHA-256，说明是否签名与是否设备测试。此文档本身不证明工作流已运行或安装包已发布。

@@ -1,4 +1,13 @@
 import { analyzeProfile, decomposeExperience, directions, Skill } from './engine';
+import { createModelCareerProvider } from './model-career-provider';
+import { currentModelSettings, isNativeModelAvailable } from './native-model';
+export {
+  loadModelSettings,
+  saveModelSettings,
+  setCloudEnabled,
+  clearModelSettings,
+} from './native-model';
+export type { ModelSettings, ModelProvider } from './native-model';
 
 export type CareerRecord = {
   id: string;
@@ -9,7 +18,7 @@ export type CareerRecord = {
 };
 export type JobMatch = { requirements: string[]; evidence: string[]; gaps: string[]; note: string };
 
-// Provider contract: replace the local provider with a server-only model adapter when API credentials are configured.
+// 同一业务契约：本地规则，或安装版内置原生请求调用云模型。
 export interface CareerProvider {
   analyze(profile: {
     role: string;
@@ -91,5 +100,29 @@ export const localDemoProvider: CareerProvider = {
   },
 };
 
-export const careerService = localDemoProvider;
+const cloudProvider = createModelCareerProvider();
+
+export function getCareerServiceStatus() {
+  const settings = currentModelSettings();
+  const native = isNativeModelAvailable();
+  const cloud = native && settings.configured && settings.enabled;
+  return {
+    configured: settings.configured,
+    enabled: settings.enabled,
+    mode: cloud ? ('cloud' as const) : ('local' as const),
+    label: cloud ? '云模型分析' : '本地规则分析',
+    endpoint: settings.baseUrl,
+    native,
+  };
+}
+
+function provider(): CareerProvider {
+  return getCareerServiceStatus().mode === 'cloud' ? cloudProvider : localDemoProvider;
+}
+
+export const careerService: CareerProvider = {
+  analyze: (profile) => provider().analyze(profile),
+  matchJob: (profileText, jobText) => provider().matchJob(profileText, jobText),
+  polishExperience: (text) => provider().polishExperience(text),
+};
 export const roleDirections = directions;

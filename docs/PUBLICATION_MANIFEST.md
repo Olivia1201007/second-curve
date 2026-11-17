@@ -1,5 +1,7 @@
 # SECOND CURVE 公开发布待审清单
 
+> 历史记录：以下状态来自原 v1.0.0 标签，不代表本次 4.1.0 修改已推送或发布。本次构建与验证状态见 `BUILD_STATUS.md`；新版尚未创建 GitHub Release。
+
 > 状态：项目文件已审查并推送到 Public 仓库；CI 和 Android Debug 构建通过，v1.0.0 Release 工作流待执行。
 
 ## 仓库计划
