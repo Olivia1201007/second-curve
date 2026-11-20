@@ -2,14 +2,17 @@
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import base64
 import http.client
 import json
+import os
 import shutil
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 import server
 
@@ -216,6 +219,80 @@ class ProxyTests(unittest.TestCase):
                 self.assertEqual(status, 403)
                 self.assertNotIn("Access-Control-Allow-Origin", response_headers)
         self.assertEqual(MockOpenAI.calls, [])
+
+    def test_cross_site_top_level_page_navigation_only(self):
+        headers = {
+            "Origin": "https://other.example",
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Dest": "document",
+        }
+        status, raw, _ = self.request("GET", "/", headers=headers)
+        self.assertEqual(status, 200)
+        self.assertIn(b"same layout", raw)
+        self.assertEqual(self.request("GET", "/api/models", headers=headers)[0], 403)
+        headers["Sec-Fetch-Dest"] = "script"
+        self.assertEqual(self.request("GET", "/", headers=headers)[0], 403)
+
+    def test_basic_auth_and_public_health_check(self):
+        app = server.make_server(replace(
+            self.config, access_username="reviewer", access_password="test-password",
+        ))
+        thread = threading.Thread(target=app.serve_forever, daemon=True)
+        thread.start()
+        try:
+            status, _, headers = self.request("GET", "/", app=app)
+            self.assertEqual(status, 401)
+            self.assertTrue(headers["WWW-Authenticate"].startswith("Basic "))
+            credentials = base64.b64encode(b"reviewer:test-password").decode()
+            status, raw, _ = self.request(
+                "GET", "/api/models", headers={"Authorization": f"Basic {credentials}"}, app=app,
+            )
+            self.assertEqual(status, 200)
+            self.assertIn(b'"configured": true', raw)
+            status, raw, _ = self.request("GET", "/healthz", app=app)
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(raw), {"status": "ok"})
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_public_origin_matches_host_and_authentication(self):
+        app = server.make_server(replace(
+            self.config, host="0.0.0.0", app_origin="https://app.example",
+            access_username="reviewer", access_password="test-password",
+        ))
+        thread = threading.Thread(target=app.serve_forever, daemon=True)
+        thread.start()
+        try:
+            credentials = base64.b64encode(b"reviewer:test-password").decode()
+            headers = {
+                "Host": "app.example",
+                "Origin": "https://app.example",
+                "Authorization": f"Basic {credentials}",
+            }
+            self.assertEqual(self.request("GET", "/api/models", headers=headers, app=app)[0], 200)
+            headers["Host"] = "attacker.example"
+            self.assertEqual(self.request("GET", "/api/models", headers=headers, app=app)[0], 403)
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_public_configuration_requires_https_origin_and_access_control(self):
+        with patch.dict(os.environ, {"HOST": "0.0.0.0", "APP_ORIGIN": "https://app.example"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "APP_ACCESS_USERNAME"):
+                server.Config.from_env()
+        env = {
+            "HOST": "0.0.0.0",
+            "RENDER_EXTERNAL_URL": "https://app.example",
+            "APP_ACCESS_USERNAME": "reviewer",
+            "APP_ACCESS_PASSWORD": "test-password",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = server.Config.from_env()
+        self.assertEqual(config.access_username, "reviewer")
+        self.assertEqual(config.access_password, "test-password")
+        self.assertEqual(config.app_origin, "https://app.example")
 
     def test_static_root_cannot_serve_secrets(self):
         status, raw, _ = self.request("GET", "/")

@@ -5,6 +5,8 @@ environment, then run ``python server.py``. The key never enters the HTML.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +34,8 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 8787
     app_origin: str = ""
+    access_username: str = ""
+    access_password: str = ""
     public_dir: Path = BASE / "public"
     timeout: float = 90
     concurrency: int = 4
@@ -49,17 +53,29 @@ class Config:
         if u.username or u.password or u.query or u.fragment or not u.hostname or (u.scheme != "https" and not (u.scheme == "http" and local)):
             raise ValueError("OPENAI_BASE_URL 需使用 HTTPS（本机测试服务可使用 HTTP）")
         host = os.getenv("HOST", "127.0.0.1").strip()
-        origin = os.getenv("APP_ORIGIN", "").strip().rstrip("/")
+        origin = (
+            os.getenv("APP_ORIGIN", "").strip().rstrip("/")
+            or os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+        )
+        access_username = os.getenv("APP_ACCESS_USERNAME", "").strip()
+        access_password = os.getenv("APP_ACCESS_PASSWORD", "")
         if origin:
             o = parse.urlsplit(origin)
             if o.scheme not in {"http", "https"} or not o.netloc or o.path or o.query or o.fragment or o.username or o.password:
                 raise ValueError("APP_ORIGIN 只填写网页来源，如 https://example.com")
-        elif host not in {"127.0.0.1", "localhost", "::1"}:
-            raise ValueError("非本机监听必须设置 APP_ORIGIN，并在部署端配置访问控制")
+        public_host = host not in {"127.0.0.1", "localhost", "::1"}
+        if public_host:
+            if not origin or parse.urlsplit(origin).scheme != "https":
+                raise ValueError("非本机监听必须设置 HTTPS APP_ORIGIN")
+            if not access_username or not access_password:
+                raise ValueError("非本机监听必须设置 APP_ACCESS_USERNAME 和 APP_ACCESS_PASSWORD")
+        elif bool(access_username) != bool(access_password):
+            raise ValueError("APP_ACCESS_USERNAME 和 APP_ACCESS_PASSWORD 必须同时设置")
         return cls(
             api_key=os.getenv("OPENAI_API_KEY", "").strip(), model=model, models=models,
             base_url=base_url, host=host, port=int(os.getenv("PORT", "8787")),
-            app_origin=origin, public_dir=BASE / "public",
+            app_origin=origin, access_username=access_username,
+            access_password=access_password, public_dir=BASE / "public",
             timeout=max(5, min(float(os.getenv("OPENAI_TIMEOUT", "90")), 300)),
             concurrency=max(1, min(int(os.getenv("OPENAI_CONCURRENCY", "4")), 16)),
             max_output_tokens=max(64, min(int(os.getenv("OPENAI_MAX_OUTPUT_TOKENS", "4096")), 32768)),
@@ -127,6 +143,15 @@ class Handler(BaseHTTPRequestHandler):
         if host not in self.allowed_hosts():
             self.fail(403, "请求来源不受信任。", "untrusted_host")
             return False
+        path = parse.urlsplit(self.path).path
+        document_navigation = (
+            self.command == "GET"
+            and path in {"/", "/index.html"}
+            and self.headers.get("Sec-Fetch-Mode") == "navigate"
+            and self.headers.get("Sec-Fetch-Dest") == "document"
+        )
+        if document_navigation:
+            return True
         origin = self.headers.get("Origin")
         allowed_origin = self.server.config.app_origin
         if origin and (origin != allowed_origin if allowed_origin else parse.urlsplit(origin).netloc.lower() != host or parse.urlsplit(origin).scheme != "http"):
@@ -137,6 +162,25 @@ class Handler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def authorized(self):
+        config = self.server.config
+        if not config.access_username and not config.access_password:
+            return True
+        try:
+            scheme, token = self.headers.get("Authorization", "").split(" ", 1)
+            supplied = base64.b64decode(token, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            supplied = ""
+            scheme = ""
+        expected = f"{config.access_username}:{config.access_password}"
+        if scheme.lower() == "basic" and secrets.compare_digest(supplied, expected):
+            return True
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="Second Curve", charset="UTF-8"')
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return False
+
     def do_OPTIONS(self):
         self.fail(403, "不接受跨站调用。", "cross_origin")
 
@@ -144,9 +188,14 @@ class Handler(BaseHTTPRequestHandler):
         self.do_GET()
 
     def do_GET(self):
+        path = parse.urlsplit(self.path).path
+        if path == "/healthz":
+            self.json_reply(200, {"status": "ok"})
+            return
         if not self.valid_source():
             return
-        path = parse.urlsplit(self.path).path
+        if not self.authorized():
+            return
         if path in {"/api/models", "/api/config"}:
             config = self.server.config
             self.json_reply(200, {
@@ -183,6 +232,8 @@ class Handler(BaseHTTPRequestHandler):
         # Failed requests close the connection without parsing an untrusted body.
         self.close_connection = True
         if not self.valid_source():
+            return
+        if not self.authorized():
             return
         if parse.urlsplit(self.path).path != "/api/chat/completions":
             self.fail(404, "接口不存在。", "not_found")

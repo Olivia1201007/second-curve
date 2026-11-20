@@ -28,7 +28,11 @@ API Key 可在 <https://platform.openai.com/api-keys> 创建。API 需要账户�
 
 这是“网页 + 轻量服务端”的完整接入版。`public/index.html` 需要由 `server.py` 提供，不能只双击 HTML 或只把 HTML 上传到静态资料库来获得 AI 功能。服务默认只监听本机；公开部署时，平台需支持常驻 Python 进程、HTTPS 和同源反向代理，并在代理前启用登录或其他访问控制。应用本身不提供用户登录；不要在没有访问控制的情况下把带有服务端 Key 的代理公开给所有人。
 
-托管平台应在服务端配置 `OPENAI_API_KEY`，并按需配置 `OPENAI_MODEL`、`OPENAI_MODELS`；设置 `HOST=0.0.0.0`、使用平台提供的 `PORT`，并将 `APP_ORIGIN` 设为实际 HTTPS 网站来源（例如 `https://example.com`）。服务不会自动读取 `.env.example`。本仓库未绑定或配置特定托管平台，完成部署前需先确认有权限使用的 Python 托管服务及其访问控制方式。
+公开托管必须使用 HTTPS `APP_ORIGIN`、`APP_ACCESS_USERNAME` 和 `APP_ACCESS_PASSWORD`。Render 会提供 `RENDER_EXTERNAL_URL`，服务可用它作为默认来源；绑定自定义域名时，应显式设置匹配的 `APP_ORIGIN`。服务启动时会拒绝缺少 HTTPS 来源或 Basic Auth 凭据的公网配置；`/healthz` 仅返回不含敏感信息的状态。Render Blueprint 设置 `HOST=0.0.0.0`，Render 提供 `PORT`。托管平台还应设置 `OPENAI_API_KEY`，并可按需配置 `OPENAI_MODEL`、`OPENAI_MODELS`。这些变量不会从 `.env.example` 自动加载。
+
+仓库提供 `render.yaml` 作为 Render 免费 Web Service Blueprint：在 Render Dashboard 通过 **New → Blueprint** 连接此仓库并选择 `main`，审核后创建服务。Blueprint 会要求为 `APP_ACCESS_USERNAME`、`APP_ACCESS_PASSWORD` 和 `OPENAI_API_KEY` 输入值；凭据只应在 Render 的服务环境设置中填写，绝不能提交到 Git 或发送到聊天。若使用 Render 默认域名，服务会读取 Render 自动提供的 HTTPS 地址；绑定自定义域名后，需在服务环境中设置匹配的 `APP_ORIGIN`。Render 免费实例会在空闲后休眠，首次唤醒可能延迟；它使用临时文件系统，因此不可把服务本机文件作为持久数据存储。Blueprint 的自动部署仅在 `main` 分支 CI 检查通过后触发。
+
+跨站的顶层页面导航只在浏览器标记为 `navigate`/`document` 时放行，以便从外部链接打开首页；API、子资源及 POST 仍受来源校验和 CSRF token 保护。Basic Auth 保护除健康检查外的所有路由。这里的 Blueprint 是部署配置，不代表已创建托管资源或已完成公网验收。
 
 网页中不包含 OpenAI Key。浏览器只访问同源 `/api/models`、`/api/chat/completions`，服务端调用 OpenAI Chat Completions API。对话和岗位匹配支持流式输出及停止生成。未配置 Key、额度不足、模型不可用、网络中断会显示错误，不会伪造回复。
 
