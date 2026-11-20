@@ -132,6 +132,23 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return status, data, response_headers
 
+    def start_app(self, config):
+        app = server.make_server(config)
+        thread = threading.Thread(target=app.serve_forever, daemon=True)
+        thread.start()
+        return app
+
+    def create_visitor(self, app):
+        status, raw, headers = self.request("GET", "/api/models", app=app)
+        self.assertEqual(status, 200)
+        cookie = headers["Set-Cookie"].split(";", 1)[0]
+        token = json.loads(raw)["csrf_token"]
+        return cookie, token, headers["Set-Cookie"]
+
+    @staticmethod
+    def visitor_headers(cookie, token):
+        return {"Cookie": cookie, "X-Second-Curve-Token": token}
+
     def body(self, **extra):
         return {"model": "gpt-4.1-mini", "messages": [{"role": "user", "content": "hello"}], **extra}
 
@@ -279,7 +296,12 @@ class ProxyTests(unittest.TestCase):
             app.server_close()
 
     def test_public_configuration_requires_https_origin_and_access_control(self):
+        with self.assertRaisesRegex(ValueError, "Basic Auth"):
+            server.Config(public_visitor_mode=True)
         with patch.dict(os.environ, {"HOST": "0.0.0.0", "APP_ORIGIN": "https://app.example"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "APP_ACCESS_USERNAME"):
+                server.Config.from_env()
+        with patch.dict(os.environ, {"PUBLIC_VISITOR_MODE": "true"}, clear=True):
             with self.assertRaisesRegex(ValueError, "APP_ACCESS_USERNAME"):
                 server.Config.from_env()
         env = {
@@ -287,12 +309,206 @@ class ProxyTests(unittest.TestCase):
             "RENDER_EXTERNAL_URL": "https://app.example",
             "APP_ACCESS_USERNAME": "reviewer",
             "APP_ACCESS_PASSWORD": "test-password",
+            "PUBLIC_VISITOR_MODE": "true",
         }
         with patch.dict(os.environ, env, clear=True):
             config = server.Config.from_env()
         self.assertEqual(config.access_username, "reviewer")
         self.assertEqual(config.access_password, "test-password")
         self.assertEqual(config.app_origin, "https://app.example")
+        self.assertTrue(config.public_visitor_mode)
+        self.assertEqual(config.max_output_tokens, 1024)
+        self.assertEqual(config.max_input_chars, 32000)
+        self.assertEqual(config.max_response_bytes, 512 * 1024)
+
+    def test_public_visitor_mode_allows_public_pages_but_protects_admin_paths(self):
+        app = self.start_app(replace(
+            self.config, public_visitor_mode=True,
+            access_username="admin", access_password="admin-test-password",
+        ))
+        try:
+            status, raw, _ = self.request("GET", "/", app=app)
+            self.assertEqual(status, 200)
+            self.assertIn(b"same layout", raw)
+            self.assertEqual(self.request("GET", "/admin", app=app)[0], 401)
+            self.assertEqual(self.request("GET", "/api/admin", app=app)[0], 401)
+            credentials = base64.b64encode(b"admin:admin-test-password").decode()
+            status, _, _ = self.request(
+                "GET", "/admin",
+                headers={"Authorization": f"Basic {credentials}"}, app=app,
+            )
+            self.assertEqual(status, 404)
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_public_visitor_cookie_binds_csrf_and_cross_site_api_stays_blocked(self):
+        app = self.start_app(replace(
+            self.config, public_visitor_mode=True,
+            access_username="admin", access_password="admin-test-password",
+        ))
+        try:
+            cookie_a, token_a, set_cookie_a = self.create_visitor(app)
+            cookie_b, token_b, _ = self.create_visitor(app)
+            self.assertNotEqual(cookie_a, cookie_b)
+            self.assertNotEqual(token_a, token_b)
+            self.assertIn("HttpOnly", set_cookie_a)
+            self.assertIn("SameSite=Lax", set_cookie_a)
+            status, _, _ = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_b, token_a), app=app,
+            )
+            self.assertEqual(status, 403)
+            status, _, _ = self.request(
+                "GET", "/api/models",
+                headers={"Sec-Fetch-Site": "cross-site"}, app=app,
+            )
+            self.assertEqual(status, 403)
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_a, token_a), app=app,
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(raw)["choices"][0]["message"]["content"], "mock answer")
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_public_https_cookie_and_input_limit(self):
+        app = self.start_app(replace(
+            self.config, public_visitor_mode=True, app_origin="https://app.example",
+            access_username="admin", access_password="admin-test-password",
+        ))
+        try:
+            origin_headers = {"Host": "app.example", "Origin": "https://app.example"}
+            status, raw, response_headers = self.request(
+                "GET", "/api/models", headers=origin_headers, app=app,
+            )
+            self.assertEqual(status, 200)
+            self.assertIn("Secure", response_headers["Set-Cookie"])
+            self.assertIn("HttpOnly", response_headers["Set-Cookie"])
+            cookie = response_headers["Set-Cookie"].split(";", 1)[0]
+            token = json.loads(raw)["csrf_token"]
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions",
+                self.body(messages=[{"role": "user", "content": "x" * 32001}]),
+                headers={**origin_headers, **self.visitor_headers(cookie, token)}, app=app,
+            )
+            self.assertEqual(status, 400)
+            self.assertEqual(json.loads(raw)["error"]["code"], "invalid_request")
+            self.assertEqual(MockOpenAI.calls, [])
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_guest_request_and_token_quotas_are_global_and_per_visitor(self):
+        app = self.start_app(replace(
+            self.config, public_visitor_mode=True,
+            access_username="admin", access_password="admin-test-password",
+            visitor_requests_per_day=1, global_requests_per_day=2,
+            visitor_output_tokens_per_day=1024, global_output_tokens_per_day=2048,
+        ))
+        try:
+            cookie_a, token_a, _ = self.create_visitor(app)
+            cookie_b, token_b, _ = self.create_visitor(app)
+            cookie_c, token_c, _ = self.create_visitor(app)
+            status, _, _ = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_a, token_a), app=app,
+            )
+            self.assertEqual(status, 200)
+            status, raw, headers = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_a, token_a), app=app,
+            )
+            self.assertEqual(status, 429)
+            self.assertEqual(json.loads(raw)["error"]["code"], "visitor_daily_limit")
+            self.assertIn("Retry-After", headers)
+            status, _, _ = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_b, token_b), app=app,
+            )
+            self.assertEqual(status, 200)
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions", self.body(),
+                headers=self.visitor_headers(cookie_c, token_c), app=app,
+            )
+            self.assertEqual(status, 429)
+            self.assertEqual(json.loads(raw)["error"]["code"], "global_daily_limit")
+            self.assertEqual(len(MockOpenAI.calls), 2)
+        finally:
+            app.shutdown()
+            app.server_close()
+
+    def test_guest_concurrency_is_limited_per_visitor_and_globally(self):
+        quotas = server.UsageQuota(replace(
+            self.config, concurrency=2, visitor_concurrency=1,
+        ))
+        self.assertEqual(quotas.reserve("visitor-a", 1), (1, None, 0))
+        self.assertEqual(quotas.reserve("visitor-a", 1)[1], "visitor_concurrency_limit")
+        self.assertEqual(quotas.reserve("visitor-b", 1), (1, None, 0))
+        self.assertEqual(quotas.reserve("visitor-c", 1)[1], "concurrency_limit")
+        quotas.release("visitor-a")
+        quotas.release("visitor-b")
+
+    def test_guest_minute_and_token_quotas_are_enforced(self):
+        rate_limiter = server.UsageQuota(replace(
+            self.config, visitor_requests_per_minute=1, global_requests_per_minute=2,
+        ))
+        self.assertEqual(rate_limiter.reserve("visitor-a", 1), (1, None, 0))
+        rate_limiter.release("visitor-a")
+        self.assertEqual(rate_limiter.reserve("visitor-a", 1)[1], "visitor_rate_limit")
+        self.assertEqual(rate_limiter.reserve("visitor-b", 1), (1, None, 0))
+        rate_limiter.release("visitor-b")
+        self.assertEqual(rate_limiter.reserve("visitor-c", 1)[1], "global_rate_limit")
+
+        token_limiter = server.UsageQuota(replace(
+            self.config, visitor_output_tokens_per_day=10, global_output_tokens_per_day=20,
+        ))
+        self.assertEqual(token_limiter.reserve("visitor-a", 8), (8, None, 0))
+        token_limiter.release("visitor-a")
+        self.assertEqual(token_limiter.reserve("visitor-a", 3)[1], "visitor_token_quota")
+        self.assertEqual(token_limiter.reserve("visitor-b", 8), (8, None, 0))
+        token_limiter.release("visitor-b")
+        self.assertEqual(token_limiter.reserve("visitor-c", 5)[1], "global_token_quota")
+
+    def test_upstream_response_byte_limit_applies_to_json_and_streams(self):
+        json_app = self.start_app(replace(self.config, max_response_bytes=32))
+        try:
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions", self.body(), app=json_app,
+            )
+            self.assertEqual(status, 502)
+            self.assertEqual(json.loads(raw)["error"]["code"], "response_too_large")
+        finally:
+            json_app.shutdown()
+            json_app.server_close()
+
+        stream_app = self.start_app(replace(self.config, max_response_bytes=64))
+        try:
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions", self.body(stream=True), app=stream_app,
+            )
+            self.assertEqual(status, 200)
+            self.assertIn(b"response_too_large", raw)
+            self.assertNotIn(b"data: [DONE]", raw)
+        finally:
+            stream_app.shutdown()
+            stream_app.server_close()
+
+    def test_input_character_limit_is_enforced(self):
+        app = self.start_app(replace(self.config, max_input_chars=20))
+        try:
+            status, raw, _ = self.request(
+                "POST", "/api/chat/completions",
+                self.body(messages=[{"role": "user", "content": "x" * 21}]), app=app,
+            )
+            self.assertEqual(status, 400)
+            self.assertEqual(json.loads(raw)["error"]["code"], "invalid_request")
+            self.assertEqual(MockOpenAI.calls, [])
+        finally:
+            app.shutdown()
+            app.server_close()
 
     def test_static_root_cannot_serve_secrets(self):
         status, raw, _ = self.request("GET", "/")

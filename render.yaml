@@ -17,5 +17,7 @@ services:
         sync: false
       - key: APP_ACCESS_PASSWORD
         sync: false
+      - key: PUBLIC_VISITOR_MODE
+        value: "true"
       - key: OPENAI_API_KEY
         sync: false
