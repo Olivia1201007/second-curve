@@ -30,7 +30,7 @@ API Key 可在 <https://platform.openai.com/api-keys> 创建。API 需要账户�
 
 公开托管必须使用 HTTPS `APP_ORIGIN`（或平台提供的 HTTPS `RENDER_EXTERNAL_URL`）、`APP_ACCESS_USERNAME` 和 `APP_ACCESS_PASSWORD`；服务启动时会拒绝缺少 HTTPS 来源或管理凭据的公网配置。`/healthz` 仅返回不含敏感信息的状态。Render Blueprint 设置 `HOST=0.0.0.0`，Render 提供 `PORT`。托管平台还应设置 `OPENAI_API_KEY`，并可按需配置 `OPENAI_MODEL`、`OPENAI_MODELS`。这些变量不会从 `.env.example` 自动加载。
 
-`PUBLIC_VISITOR_MODE` 默认关闭。明确设置为 `true` 后，首页、静态页面、`GET /api/models`、`GET /api/config` 和 `POST /api/chat/completions` 可供无需账号的访客使用；`/admin`、`/api/admin` 及其他 API 路径仍要求 `APP_ACCESS_USERNAME` / `APP_ACCESS_PASSWORD`。访客 AI 请求仍须经过同源/Host/Fetch Metadata 校验、HttpOnly 签名访客 cookie 和绑定该 cookie 的 CSRF token。此模式不提供实名或登录身份：删除 cookie、换浏览器或使用无痕窗口会生成新的访客额度身份，因此全局额度也是必要的防滥用上限。
+`PUBLIC_VISITOR_MODE` 默认关闭。明确设置为 `true` 后，首页、静态页面、`GET /api/models`、`GET /api/config` 和 `POST /api/chat/completions` 可供无需账号的访客使用；`/admin`、`/api/admin` 及其他 API 路径仍要求 `APP_ACCESS_USERNAME` / `APP_ACCESS_PASSWORD`。认证后的 `/admin` 只显示 Render API 环境设置链接，不收集或修改密钥。访客 AI 请求仍须经过同源/Host/Fetch Metadata 校验、HttpOnly 签名访客 cookie 和绑定该 cookie 的 CSRF token。此模式不提供实名或登录身份：删除 cookie、换浏览器或使用无痕窗口会生成新的访客额度身份，因此全局额度也是必要的防滥用上限。
 
 访客限制在每个服务进程内按滑动 60 秒和 24 小时统计：每访客最多 4 次/分钟、12 次/天、1 个并发请求、8192 个请求输出 token/天；全服务最多 30 次/分钟、100 次/天、`OPENAI_CONCURRENCY` 个并发请求（默认 4）、65536 个请求输出 token/天。公开模式单次输出最多 1024 token、输入最多 32000 字符、请求体最多 512 KiB、上游响应最多 512 KiB。超限返回 429 和 `Retry-After`。内存额度在进程重启后重置，多实例各自计数；若改为多实例托管，需接入共享限流存储才能保证跨实例总量。
 

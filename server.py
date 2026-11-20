@@ -30,6 +30,7 @@ PUBLIC_MAX_BODY = 512 * 1024
 VISITOR_COOKIE = "secondcurve_visitor"
 VISITOR_COOKIE_MAX_AGE = 24 * 60 * 60
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+ADMIN_API_SETTINGS_URL = "https://dashboard.render.com/web/srv-dc05gjajnfac73910d7g/env"
 
 
 @dataclass(frozen=True)
@@ -367,6 +368,22 @@ class Handler(BaseHTTPRequestHandler):
         if not self.valid_source():
             return
         if not self.authorize_or_public(path):
+            return
+        if path == "/admin":
+            body = (
+                "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\">"
+                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                "<title>管理员设置</title><body><main><h1>管理员设置</h1>"
+                f"<a href=\"{ADMIN_API_SETTINGS_URL}\">打开 Render API 设置</a>"
+                "</main></body></html>"
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("X-Robots-Tag", "noindex, nofollow")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
             return
         if path in {"/api/models", "/api/config"}:
             config = self.server.config

@@ -321,7 +321,7 @@ class ProxyTests(unittest.TestCase):
         self.assertEqual(config.max_input_chars, 32000)
         self.assertEqual(config.max_response_bytes, 512 * 1024)
 
-    def test_public_visitor_mode_allows_public_pages_but_protects_admin_paths(self):
+    def test_public_visitor_mode_allows_public_pages_and_protects_admin_api_settings(self):
         app = self.start_app(replace(
             self.config, public_visitor_mode=True,
             access_username="admin", access_password="admin-test-password",
@@ -330,14 +330,27 @@ class ProxyTests(unittest.TestCase):
             status, raw, _ = self.request("GET", "/", app=app)
             self.assertEqual(status, 200)
             self.assertIn(b"same layout", raw)
-            self.assertEqual(self.request("GET", "/admin", app=app)[0], 401)
+            self.assertNotIn(server.ADMIN_API_SETTINGS_URL.encode(), raw)
+            status, _, _ = self.request("GET", "/api/models", app=app)
+            self.assertEqual(status, 200)
+            status, raw, headers = self.request("GET", "/admin", app=app)
+            self.assertEqual(status, 401)
+            self.assertEqual(raw, b"")
+            self.assertTrue(headers["WWW-Authenticate"].startswith("Basic "))
             self.assertEqual(self.request("GET", "/api/admin", app=app)[0], 401)
             credentials = base64.b64encode(b"admin:admin-test-password").decode()
-            status, _, _ = self.request(
+            status, raw, headers = self.request(
                 "GET", "/admin",
                 headers={"Authorization": f"Basic {credentials}"}, app=app,
             )
-            self.assertEqual(status, 404)
+            self.assertEqual(status, 200)
+            self.assertIn("text/html", headers["Content-Type"])
+            self.assertIn(
+                f'href="{server.ADMIN_API_SETTINGS_URL}">'.encode(),
+                raw,
+            )
+            self.assertNotIn(b"<form", raw)
+            self.assertNotIn(b"OPENAI_API_KEY", raw)
         finally:
             app.shutdown()
             app.server_close()
