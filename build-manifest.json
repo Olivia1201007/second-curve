@@ -1,0 +1,15 @@
+{
+  "edition": "OpenAI",
+  "thread_id": "01a1f6b3-83ed-7ac1-ba57-c0a2aa1f075b",
+  "base": "../第二曲线-亚克力与滚动渐入版.html",
+  "base_sha256": "302848b2b2ac586a628b960cd0303f34494c4fef13055eb18c98069e5abc84d3",
+  "output_sha256": "3d271ee4d275d79881a780198c5f666ab4d4b2f946e285e103aff9fab92ee02b",
+  "sdk_blocks_replaced": 1,
+  "layout_markup_preserved": true,
+  "api_key_in_browser": false,
+  "provider_error_messages_preserved": true,
+  "api_routes": [
+    "/api/models",
+    "/api/chat/completions"
+  ]
+}

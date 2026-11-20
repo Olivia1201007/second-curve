@@ -1,146 +1,51 @@
-# SECOND CURVE｜第二曲线 AI
+# 第二曲线 · OpenAI 接入版
 
-**AI Career Transition & Re-employment Copilot** · 面向 35–55 岁失业、待业及职业转型人群的求职助手。
+在最新明亮弹窗与拖拽修复版上替换 AI 接口。首页、1241 条岗位、筛选、收藏、六点拖拽、求职进度、个人资料、简历导入、导出、亚克力按钮、滚动渐入及切屏动效沿用原版。模型菜单显示配置的 OpenAI 模型，页脚提供方文字改为 OpenAI。
 
-> 过去的经验，值得被重新看见。
+## 架构
 
-[Web 在线体验](https://second-curve-career.wiryfox513.chatgpt.site/) · [GitHub Public 仓库](https://github.com/Olivia1201007/second-curve) · [v1.0.0 Release 下载](https://github.com/Olivia1201007/second-curve/releases/tag/v1.0.0)
+- `public/index.html` 是完整单页应用；CSS、业务脚本、图标和 1241 条公开岗位记录均内嵌其中。
+- `openai-adapter.js` 将原有模型/对话接口连接到同源 API；岗位数据与收藏、资料、简历版本和求职进度均在浏览器本地处理。
+- `server.py` 使用 Python 标准库提供静态页面、模型列表和 Chat Completions 代理。OpenAI Key 只从服务端环境变量读取。
+- 岗位记录注明来源链接；详情及薪资需以中国公共招聘网原始页面为准。
 
-SECOND CURVE 帮助用户从真实工作任务中发现可迁移能力，整理求职材料并开始下一步行动。页面不以年龄推断能力，不承诺就业结果，也不编造招聘、工资或用户业绩。
+## Windows 启动
 
-## 社会价值与目标用户
+1. 解压整个压缩包，安装 Python 3.10 或以上版本（无需安装任何第三方依赖）。
+2. 双击 `start.cmd`。
+3. 在终端输入自己的 OpenAI API Key，内容会隐藏且不会保存到文件。直接回车可以只预览网页。
+4. 浏览器自动打开网页（默认 `http://127.0.0.1:8787/`；端口占用时自动另选空闲端口）。保持终端窗口打开。
 
-35–55 岁求职者可能需要在收入、家庭、地点与数字技能限制下尽快重新就业。产品用清晰的小步流程梳理既有经验，帮助用户把做过的事说明白、对照真实岗位要求、准备简历和面试。核心体验无需注册，个人资料默认留在当前设备。
+API Key 可在 <https://platform.openai.com/api-keys> 创建。API 需要账户可用额度；本项目没有内置 Key，也不会读取其他项目的凭据。模型默认 `gpt-4.1-mini`，以你的项目可访问模型为准。
 
-## 当前功能（真实实现）
+## 手动启动 / 更换模型
 
-- 极简首页，新用户从空白档案开始；演示内容需要主动加载且会显示“演示数据”。
-- 四步职业经历整理、语音输入（取决于系统/浏览器支持）和 PDF/DOCX/TXT/图片导入；文件解析与 OCR 在本机运行。
-- 根据用户输入生成带原文依据的技能线索、任务拆解和经验迁移方向。
-- 三类职业方向及可修改目标；粘贴真实招聘描述进行关键词对照。
-- 简历、自我介绍与求职邮件草稿；面试回答结构练习；行动计划、岗位跟进和 PDF 打印。
-- Android 原生壳：本地静态资源打包、应用图标/启动页、系统返回、网络状态提示、系统分享。
-- Windows 与 macOS Tauri 桌面包：本地静态资源、独立窗口、系统应用图标。
+在 PowerShell 中设置 `OPENAI_API_KEY` 与 `OPENAI_MODEL` 环境变量，再执行 `python -B server.py`；或直接运行 `python -B launcher.py`，由启动程序隐藏输入 Key。可设置 `OPENAI_MODELS` 为逗号分隔的额外模型 ID，它们会出现在原有模型菜单中。
 
-## 真实边界
+`.env.example` 仅列出配置格式，服务不会自动加载该文件。默认上游为 `https://api.openai.com/v1`。`OPENAI_BASE_URL` 仅供服务端按需调整，不在网页上公开。
 
-- 当前没有真实模型 API、知乎接口、实时招聘检索、工资数据库、账号/云同步或服务器数据库。工作分析使用本地规则。
-- “求职匹配”仅将用户提供的经历与招聘文字做关键词对照，不是正式评分或录用概率。
-- 薪资不输出市场估算；招聘平台链接由用户自行访问并核实。
-- 应用离线可打开本地页面并读取本机已保存资料。实时 AI/招聘服务当前没有接入。
-- 网站链接在中国大陆的网络可达性未做覆盖性测试，不能承诺无需 VPN 在所有地区稳定访问。Android/Windows 包内核心资源本地打包，不启动外部网站。
+## 部署与使用说明
 
-## 产品截图与图标
+这是“网页 + 轻量服务端”的完整接入版。`public/index.html` 需要由 `server.py` 提供，不能只双击 HTML 或只把 HTML 上传到静态资料库来获得 AI 功能。服务默认只监听本机；公开部署时，平台需支持常驻 Python 进程、HTTPS 和同源反向代理，并在代理前启用登录或其他访问控制。应用本身不提供用户登录；不要在没有访问控制的情况下把带有服务端 Key 的代理公开给所有人。
 
-![SECOND CURVE 品牌图标](docs/assets/second-curve-icon-1024.png)
+托管平台应在服务端配置 `OPENAI_API_KEY`，并按需配置 `OPENAI_MODEL`、`OPENAI_MODELS`；设置 `HOST=0.0.0.0`、使用平台提供的 `PORT`，并将 `APP_ORIGIN` 设为实际 HTTPS 网站来源（例如 `https://example.com`）。服务不会自动读取 `.env.example`。本仓库未绑定或配置特定托管平台，完成部署前需先确认有权限使用的 Python 托管服务及其访问控制方式。
 
-首页在线预览：[打开体验](https://second-curve-career.wiryfox513.chatgpt.site/)。当前仓库包含品牌图标；可复现的界面截图待加入正式设备截图流程。
+网页中不包含 OpenAI Key。浏览器只访问同源 `/api/models`、`/api/chat/completions`，服务端调用 OpenAI Chat Completions API。对话和岗位匹配支持流式输出及停止生成。未配置 Key、额度不足、模型不可用、网络中断会显示错误，不会伪造回复。
 
-## 技术栈与架构
+资料、简历版本、收藏及进度仍保存在当前浏览器；如果从 WorkBuddy 改用本地地址，浏览器会使用另一个站点存储空间。已有收藏可在原版“我的求职”导出备份后，在新版同处导入；其他资料请保留原版导出备份。
 
-- Web：Next.js 16、React 19、TypeScript、静态导出。
-- Android：Capacitor 7，`out/` 被复制到 Android app assets。
-- Windows/macOS：Tauri 2，窗口加载安装包内的 `out/` 文件；macOS Release 生成 Intel 与 Apple Silicon 通用 DMG。
-- 本地服务：`lib/engine.ts`、`lib/career-service.ts`。
-- 数据：浏览器/WebView `localStorage`；没有服务器个人档案存储。
-- OCR/文件：本地 Tesseract.js 语言资源、PDF.js、Mammoth。
+只有主动提交到 AI 的消息及其中附带的简历或岗位内容会发送到接入服务并转交 OpenAI。服务端不记录请求正文和密钥。
 
-详细说明：[架构](docs/architecture.md) · [技术审查](docs/TECH_REVIEW.md) · [数据隐私](docs/PRIVACY.md)
+## 验证
 
-## 目录结构
+`python -B -m unittest -v test_server.py` 使用本机模拟上游验证代理、参数校验、流式事件、密钥缺失与访问边界。
 
-```text
-app/                    Next.js 页面、样式、Logo 与元数据
-lib/                    职业领域规则、分析服务接口
-public/                 OCR、PDF worker 与离线语言资源
-android/                Capacitor Android 原生工程
-src-tauri/              Tauri 桌面工程与 Windows 打包图标
-.github/workflows/      质量检查、Android、桌面 Release 与镜像工作流
-tests/                  职业规则单元测试
-docs/                   产品计划、技术审查、安装与隐私文档
-scripts/                Gitee 镜像同步脚本
-```
+`node --test test_adapter.mjs` 验证浏览器兼容桥的流式解析、中文分块、错误和取消。测试不使用真实 OpenAI Key，不消耗额度。
 
-## 本地 Web 开发
+自动化测试使用本机模拟上游和浏览器 `fetch`，不需要真实 Key，也不会连接或消耗 OpenAI 额度。浏览器可检查页面、岗位筛选/详情/收藏、资料与求职进度、简历导入和模型菜单；未配置 Key 时聊天与岗位匹配会显示明确错误。流式输出、取消和中断由适配器模拟测试覆盖。真实 OpenAI 连通性及任何公开部署均须另行配置和验收。
 
-要求 Node.js 22 或更高版本：
+## 回滚
 
-```bash
-npm ci
-npm run dev
-```
+迁移前的 `main` 保存在 `backup/main-pre-openai-migration-20261120`。发布后如需恢复旧项目，优先对迁移提交执行 `git revert <迁移提交 SHA>` 并正常推送，让托管平台重新部署回滚提交；不要 force-push。部署服务尚未配置前，本仓库不会自动发布公网网站。
 
-构建静态网站：`npm run build`，输出到 `out/`。
-
-## 工程检查
-
-```bash
-npm run lint
-npm run format:check
-npm run typecheck
-npm test
-npm run build
-```
-
-GitHub Actions 在 `main` 和 PR 运行上述检查；Android APK、Windows 安装包和 macOS 通用 DMG 由标签 `v*` 触发构建并附带 SHA-256 文件。APK 当前是 Debug 评委体验版，不是 Android 商店签名发布包。
-
-## Android
-
-安装 Android Studio、Android SDK Platform 35、JDK 21：
-
-```bash
-npm ci
-npm run android:sync
-cd android
-./gradlew assembleDebug
-```
-
-APK：`android/app/build/outputs/apk/debug/app-debug.apk`。安装、签名和离线说明见 [Android 指南](docs/app-installation.md)。[v1.0.0 Release](https://github.com/Olivia1201007/second-curve/releases/tag/v1.0.0) 提供 Actions 构建的 Debug APK 与 SHA256 文件。APK 使用 Android Debug 签名，不是商店发布签名。
-
-## Windows
-
-安装 Rust stable、Microsoft C++ Build Tools 与 WebView2 Runtime：
-
-```powershell
-npm ci
-npm run tauri:dev
-npm run tauri:build
-```
-
-安装包输出到 `src-tauri/target/release/bundle/`。[v1.0.0 Release](https://github.com/Olivia1201007/second-curve/releases/tag/v1.0.0) 提供 Actions 构建的 EXE、MSI 和 SHA256 文件。Windows 安装包未配置代码签名，系统可能显示 SmartScreen 提示。
-
-## macOS
-
-本地构建需要 macOS、Xcode Command Line Tools、Rust stable 与 Node.js 22 或更高版本：
-
-```bash
-npm ci
-npm run tauri:dev
-npm run tauri:build -- --target universal-apple-darwin --bundles dmg
-```
-
-GitHub Release 会生成同时支持 Apple Silicon 与 Intel 的 DMG。构建目前未配置 Apple Developer ID 签名和公证；macOS 可能显示开发者无法验证提示。个人测试时请先确认下载来源并核对 `macos-sha256.txt`。向普通用户分发前应配置 Developer ID 签名和 Apple 公证。
-
-## 环境变量与 API
-
-`.env.example` 提供未来服务端适配器占位配置；**当前应用不读取这些变量，也无需配置 API key**。绝不可将模型密钥加入 `NEXT_PUBLIC_*`、网页静态资源、Android APK 或 Windows 安装包。真实模型需通过受控服务端 API 代理接入。
-
-## 数据来源与合规
-
-- 知乎数据开放平台：[官方入口](https://developer.zhihu.com/)，本项目未取得 API 授权，未抓取或展示知乎内容。
-- 招聘与工资：未连接招聘数据 API 或工资数据库；用户访问真实招聘平台后自行核实。
-- AI 推理：当前无远程模型调用，页面规则结果会明确标为本地分析。
-
-## 参赛说明
-
-评委指南：[docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) · 产品计划：[docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) · 开发说明：[docs/development.md](docs/development.md) · 部署：[docs/deployment.md](docs/deployment.md) · 工程规范：[docs/engineering-standards.md](docs/engineering-standards.md) · GitHub 发布准备：[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)
-
-## 开源与贡献
-
-MIT License。欢迎查看 [贡献指南](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md) 与 [安全政策](SECURITY.md)。请勿提交真实简历、雇主机密或任何 API/签名凭证。
-
----
-
-# English
-
-SECOND CURVE helps mid-career job seekers turn real work experience into transferable skills and practical job-search actions. It is available as a static web app and is packaged for Android (Capacitor), Windows, and macOS (Tauri). Current analysis is local and rule-based; no live AI, job feed, salary dataset, or cloud profile storage is connected. No employment outcome is guaranteed.
+官方参考：<https://developers.openai.com/api/docs/quickstart>、<https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create>。

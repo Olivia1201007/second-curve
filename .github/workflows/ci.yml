@@ -1,4 +1,4 @@
-name: Quality and web build
+name: Python server and browser adapter tests
 on:
   push:
     branches: [main]
@@ -7,22 +7,17 @@ on:
 permissions:
   contents: read
 jobs:
-  web:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm audit --omit=dev --audit-level=high
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: second-curve-web-static
-          path: out/
+      - name: Test Python proxy
+        run: python -B -m unittest -v test_server.py
+      - name: Test browser adapter
+        run: node --test test_adapter.mjs
